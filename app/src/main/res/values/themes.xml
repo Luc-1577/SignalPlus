@@ -1,0 +1,4 @@
+<resources>
+    <!-- Tema base sem ActionBar — o Compose gerencia toda a UI -->
+    <style name="Theme.SignalMeter" parent="android:Theme.Material.Light.NoActionBar"/>
+</resources>
