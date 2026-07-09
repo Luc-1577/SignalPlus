@@ -116,7 +116,7 @@ private fun HowItWorks() {
     listOf(
         Icons.Default.PhoneAndroid to "Usa TelephonyManager.getAllCellInfo() para ler os dados brutos do modem.",
         Icons.Default.CellTower    to "Cada CellInfo é uma antena detectada — não só a conectada, mas as vizinhas também.",
-        Icons.Default.Refresh      to "Atualizado a cada 2 segundos. O Android pode limitar a frequência em alguns aparelhos.",
+        Icons.Default.Refresh      to "Atualizado a cada 1 segundo. O Android pode limitar a frequência em alguns aparelhos.",
         Icons.Default.Lock         to "A partir do Android 9 (API 28), exige permissão de localização — só para o sinal, sem rastreamento.",
         Icons.Default.BarChart     to "Os dBm vêm diretamente do hardware via driver — são medições reais, não estimativas.",
     ).forEachIndexed { idx, (icon, text) ->

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,7 +45,7 @@ private data class TabItem(val tab: AppTab, val label: String, val icon: ImageVe
 
 private val TABS = listOf(
     TabItem(AppTab.SIGNAL, "Sinal", Icons.Default.SignalCellularAlt),
-    TabItem(AppTab.HISTORY, "Histórico", Icons.Default.ShowChart),
+    TabItem(AppTab.HISTORY, "Histórico", Icons.AutoMirrored.Filled.ShowChart),
     TabItem(AppTab.INFO, "Info", Icons.Default.Info),
 )
 
@@ -72,8 +73,8 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
 
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        if (results.values.any { it }) vm.startPolling() else vm.onPermissionDenied()
+    ) { _ ->
+        if (hasPerms()) vm.startPolling() else vm.onPermissionDenied()
     }
 
     LaunchedEffect(Unit) {

@@ -8,8 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ls.data.SignalHistory
 import com.example.ls.data.SignalPoint
 import com.example.ls.data.signalQuality
@@ -30,7 +31,7 @@ import java.util.*
 
 @Composable
 fun HistoryScreen(history: SignalHistory, onClear: () -> Unit, modifier: Modifier = Modifier) {
-    val points by history.points.collectAsState()
+    val points by history.points.collectAsStateWithLifecycle()
     val (minDbm, maxDbm) = history.range()
     val avg    = history.average()
     val stdDev = history.stdDev()
@@ -41,7 +42,7 @@ fun HistoryScreen(history: SignalHistory, onClear: () -> Unit, modifier: Modifie
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.ShowChart, null, tint = AccentCyan, modifier = Modifier.size(20.dp))
+                    Icon(Icons.AutoMirrored.Filled.ShowChart, null, tint = AccentCyan, modifier = Modifier.size(20.dp))
                     Text("Histórico de Sinal", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                 }
                 if (points.isNotEmpty()) {
@@ -65,7 +66,7 @@ fun HistoryScreen(history: SignalHistory, onClear: () -> Unit, modifier: Modifie
                     Spacer(Modifier.width(4.dp))
                     SignalChart(points, minDbm, maxDbm, Modifier.weight(1f))
                 }
-                Text("${points.size} leituras nos últimos ${points.size * 2}s", fontSize = 10.sp, color = TextDim, modifier = Modifier.padding(top = 8.dp))
+                Text("${points.size} leituras nos últimos ${points.size}s", fontSize = 10.sp, color = TextDim, modifier = Modifier.padding(top = 8.dp))
             }
         }
         if (points.size >= 2) {
@@ -85,7 +86,7 @@ fun HistoryScreen(history: SignalHistory, onClear: () -> Unit, modifier: Modifie
                     }
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                        val stdVal = stdDev ?: 0.0
+                        val stdVal = stdDev
                         val stab = when { stdVal < 2.0 -> "Estável"; stdVal < 5.0 -> "Variável"; stdVal < 10.0 -> "Instável"; else -> "Crítico" }
                         val stabColor = when { stdVal < 2.0 -> QualityExcel; stdVal < 5.0 -> QualityGood; stdVal < 10.0 -> QualityPoor; else -> QualityVeryPoor }
                         Column(modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(BgCard).border(1.dp, BorderSubtle, RoundedCornerShape(12.dp)).padding(horizontal = 14.dp, vertical = 12.dp)) { Text("DESVIO PADRÃO", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextMuted, letterSpacing = 0.8.sp); Spacer(Modifier.height(6.dp)); Text("±%.1f dB".format(stdVal), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AccentPurple) }

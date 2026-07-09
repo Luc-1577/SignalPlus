@@ -61,7 +61,7 @@ class SignalViewModel(app: Application) : AndroidViewModel(app) {
             val cells = repository.readCells()
             val primary = cells.firstOrNull { it.isRegistered } ?: cells.firstOrNull()
             primary?.let { cell ->
-                if (cell.dbm != Int.MIN_VALUE && cell.dbm != 0) {
+                if (cell.dbm != Int.MIN_VALUE && cell.dbm != Int.MAX_VALUE && cell.dbm != 0) {
                     history.add(SignalPoint(System.currentTimeMillis(), cell.dbm, cell.networkType))
                 }
             }
