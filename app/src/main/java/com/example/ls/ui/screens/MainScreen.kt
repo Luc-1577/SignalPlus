@@ -1,8 +1,13 @@
 package com.example.ls.ui.screens
 
 import android.Manifest
+import android.app.Activity
+import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -13,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -28,7 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ls.data.*
@@ -38,6 +46,12 @@ import com.example.ls.ui.components.*
 import com.example.ls.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
+
+private tailrec fun android.content.Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
 
@@ -71,16 +85,34 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
 
+    // false só é conclusivo depois de já termos pedido a permissão uma vez:
+    // antes da primeira solicitação, o sistema também retorna false aqui.
+    fun canAskAgain(): Boolean {
+        val activity = context.findActivity() ?: return true
+        return perms.any { ActivityCompat.shouldShowRequestPermissionRationale(activity, it) }
+    }
+
+    var permanentlyDenied by remember { mutableStateOf(false) }
+
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
-        if (hasPerms()) vm.startPolling() else vm.onPermissionDenied()
+        if (hasPerms()) {
+            permanentlyDenied = false
+            vm.startPolling()
+        } else {
+            permanentlyDenied = !canAskAgain()
+            vm.onPermissionDenied()
+        }
     }
 
-    LaunchedEffect(Unit) {
+    // Amarrado ao ciclo de vida (não à composição): pausa o polling quando o
+    // app vai para background (ON_STOP) e retoma ao voltar (ON_START), em vez
+    // de só parar quando a Activity inteira é destruída.
+    LifecycleStartEffect(Unit) {
         if (hasPerms()) vm.startPolling() else launcher.launch(perms)
+        onStopOrDispose { vm.stopPolling() }
     }
-    DisposableEffect(Unit) { onDispose { vm.stopPolling() } }
 
     Scaffold(
         containerColor = BgDeep,
@@ -96,7 +128,16 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
         ) {
             when (val s = state) {
                 is SignalUiState.Loading -> LoadingScreen()
-                is SignalUiState.PermissionRequired -> PermissionScreen { launcher.launch(perms) }
+                is SignalUiState.PermissionRequired -> PermissionScreen(
+                    permanentlyDenied = permanentlyDenied,
+                    onRequest = { launcher.launch(perms) },
+                    onOpenSettings = {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                .setData(Uri.fromParts("package", context.packageName, null))
+                        )
+                    },
+                )
                 is SignalUiState.Error -> ErrorScreen(s.message) { launcher.launch(perms) }
                 is SignalUiState.Success -> {
                     AnimatedContent(
@@ -202,7 +243,11 @@ private fun LoadingScreen() {
 }
 
 @Composable
-private fun PermissionScreen(onRequest: () -> Unit) {
+private fun PermissionScreen(
+    permanentlyDenied: Boolean,
+    onRequest: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -224,21 +269,36 @@ private fun PermissionScreen(onRequest: () -> Unit) {
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                "Permita acesso ao telefone e localização para medir o sinal real da antena.",
+                if (permanentlyDenied)
+                    "Você negou a permissão permanentemente. Abra as configurações do app e conceda acesso ao telefone e localização para medir o sinal real da antena."
+                else
+                    "Permita acesso ao telefone e localização para medir o sinal real da antena.",
                 fontSize = 14.sp,
                 color = TextSecondary,
                 textAlign = TextAlign.Center,
                 lineHeight = 22.sp,
             )
             Spacer(Modifier.height(32.dp))
-            Button(
-                onClick = onRequest,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
-            ) {
-                Icon(Icons.Default.Lock, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Conceder permissões", fontWeight = FontWeight.SemiBold)
+            if (permanentlyDenied) {
+                Button(
+                    onClick = onOpenSettings,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Abrir configurações", fontWeight = FontWeight.SemiBold)
+                }
+            } else {
+                Button(
+                    onClick = onRequest,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+                ) {
+                    Icon(Icons.Default.Lock, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Conceder permissões", fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }
