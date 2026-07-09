@@ -396,10 +396,16 @@ private fun readPrimaryBwKhz(): Int? {
 }
 ```
 
-**Por que reflexão?** `PhysicalChannelConfig.getCellBandwidthDownlinkKhz()` existe desde
-API 28, mas sua visibilidade na API pública mudou entre versões do SDK. A reflexão contorna
-restrições de acesso sem depender de versões específicas do SDK. É uma técnica legítima
-quando a API existe no runtime mas não está exposta no SDK de compilação.
+**Por que reflexão?** `PhysicalChannelConfig.getCellBandwidthDownlinkKhz()` em si sempre
+foi um getter público (não é `@SystemApi`/oculto) — não há mudança de visibilidade a
+contornar aí. O obstáculo real é outro: `TelephonyManager.getPhysicalChannelConfigs()`
+(API 31+) e o `PhysicalChannelConfigListener` exigem a permissão `READ_PRECISE_PHONE_STATE`,
+que é de assinatura/sistema — apps de terceiros como este (que só declaram
+`READ_PHONE_STATE`) não conseguem obtê-la. Reflexão **não contorna** essa checagem de
+permissão, que é feita no lado do sistema; na prática, a chamada tende a cair no `catch`
+por `SecurityException` mesmo via reflexão. O ganho real da reflexão aqui é apenas evitar
+depender de uma API pública recente (API 31+) no código-fonte, permitindo compilar contra
+SDKs mais antigos — não é uma forma de obter dados que o sistema de outra forma negaria.
 
 **`try/catch` silencioso:** Qualquer exceção (`NoSuchMethodException`, `SecurityException`,
 `ClassCastException`) resulta em `null` — o app degrada graciosamente, mostrando "N/D" para
@@ -507,7 +513,7 @@ fun gsmArfcnToInfo(arfcn: Int): Pair<Double, Double>? = when (arfcn) {
     0            -> Pair(935.0, 890.0)                                           // GSM 900 especial
     in 128..251  -> (869.2 + 0.2 * (arfcn - 128)).let { Pair(it, it - 45.0) }  // GSM 850
     in 512..885  -> (1805.2 + 0.2 * (arfcn - 512)).let { Pair(it, it - 95.0) } // DCS 1800
-    in 975..1023 -> (935.2 + 0.2 * (arfcn - 1024)).let { Pair(it, it - 45.0) } // GSM 900 ext.
+    in 975..1023 -> (935.0 + 0.2 * (arfcn - 1024)).let { Pair(it, it - 45.0) } // GSM 900 ext.
     else         -> null
 }
 ```
@@ -632,8 +638,10 @@ LaunchedEffect(Unit) {
 ```
 
 **`rememberLauncherForActivityResult`:** Registra um "Activity Result Callback" de forma
-declarativa no Compose. O sistema Android 12+ exige que os launchers sejam registrados
-antes do `onStart()` da Activity — `rememberLauncherForActivityResult` garante isso.
+declarativa no Compose. A restrição de registrar o launcher antes do estado `STARTED`
+vem da própria biblioteca AndroidX Activity/Fragment (`ActivityResultRegistry`), não é
+uma exigência do Android 12 como versão de plataforma — `rememberLauncherForActivityResult`
+garante isso ao registrar o launcher na composição, antes de qualquer `onStart()`.
 
 **`LaunchedEffect(Unit)`:** Roda uma única vez quando o composable entra em composição
 (analogia: `componentDidMount` no React). O parâmetro `Unit` é a *key* — se ela não mudar,
@@ -997,8 +1005,8 @@ versões de dependências:
 
 ```toml
 [versions]
-kotlin = "2.2.10"
-compose-bom = "2024.11.00"
+kotlin = "2.4.0"
+compose-bom = "2026.06.00"
 
 [libraries]
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
@@ -1059,9 +1067,13 @@ Usar reflexão quebra a type-safety em tempo de compilação — se a API mudar,
 apenas em runtime. O `try/catch` silencioso é o mecanismo de proteção: qualquer mudança
 de API resulta em `null` (campo não disponível), sem crash.
 
-A alternativa seria verificar `Build.VERSION.SDK_INT >= 28` e usar `@RequiresApi`, mas
-a visibilidade da API no SDK varia entre fabricantes (algumas ROMs custom bloqueiam a
-chamada mesmo em API 28+). A reflexão é mais resiliente nesse cenário.
+O bloqueio real, porém, não é de visibilidade de API: `getPhysicalChannelConfigs()`
+(público desde a API 31) exige a permissão de assinatura/sistema
+`READ_PRECISE_PHONE_STATE`, que este app não declara (só tem `READ_PHONE_STATE`). Reflexão
+não contorna checagem de permissão — ela é feita pelo sistema, não pelo compilador — então
+a chamada tende a lançar `SecurityException` e cair no `catch` de qualquer forma. O valor
+prático da reflexão aqui é permitir compilar contra `compileSdk` mais antigos sem depender
+da API 31 diretamente no código-fonte, não obter dados que o sistema negaria de outra forma.
 
 ### Separação entre `bwKhz` da célula registrada vs. outras
 
