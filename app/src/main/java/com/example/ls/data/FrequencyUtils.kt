@@ -72,7 +72,7 @@ fun gsmArfcnToInfo(arfcn: Int): Pair<Double, Double>? = when (arfcn) {
     0            -> Pair(935.0, 890.0)
     in 128..251  -> (869.2 + 0.2 * (arfcn - 128)).let { Pair(it, it - 45.0) }
     in 512..885  -> (1805.2 + 0.2 * (arfcn - 512)).let { Pair(it, it - 95.0) }
-    in 975..1023 -> (935.2 + 0.2 * (arfcn - 1024)).let { Pair(it, it - 45.0) }
+    in 975..1023 -> (935.0 + 0.2 * (arfcn - 1024)).let { Pair(it, it - 45.0) }
     else         -> null
 }
 

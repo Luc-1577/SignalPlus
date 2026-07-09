@@ -4,7 +4,9 @@ import android.content.Context
 import android.os.Build
 import android.telephony.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 
 /**
  * Lê dados de célula via TelephonyManager e produz [CellSignalData] completos,
@@ -24,15 +26,41 @@ class SignalRepository(private val context: Context) {
 
             val primaryBwKhz = readPrimaryBwKhz()
 
-            val rawList: List<CellInfo>? = telephony.allCellInfo
-            if (rawList == null) return@withContext emptyList<CellSignalData>()
-
-            rawList
+            fetchCellInfo()
                 .mapNotNull { parseCellInfo(it, operator, primaryBwKhz) }
                 .sortedByDescending { it.dbm }
                 .sortedByDescending { it.isRegistered }
         } catch (_: SecurityException) { emptyList() }
         catch (_: Exception)         { emptyList() }
+    }
+
+    /**
+     * Em apps com targetSdk ≥ Q, [TelephonyManager.getAllCellInfo] não força mais um
+     * refresh do modem — só retorna o último resultado em cache. A partir da API 29,
+     * usamos [TelephonyManager.requestCellInfoUpdate] para obter uma leitura fresca.
+     */
+    private suspend fun fetchCellInfo(): List<CellInfo> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return telephony.allCellInfo ?: emptyList()
+        }
+        return try {
+            suspendCancellableCoroutine { cont ->
+                telephony.requestCellInfoUpdate(
+                    context.mainExecutor,
+                    object : TelephonyManager.CellInfoCallback() {
+                        override fun onCellInfo(cellInfo: List<CellInfo>) {
+                            if (cont.isActive) cont.resume(cellInfo)
+                        }
+
+                        override fun onError(errorCode: Int, detail: Throwable?) {
+                            if (cont.isActive) cont.resume(telephony.allCellInfo ?: emptyList())
+                        }
+                    },
+                )
+            }
+        } catch (_: Exception) {
+            telephony.allCellInfo ?: emptyList()
+        }
     }
 
     private fun readPrimaryBwKhz(): Int? {

@@ -1,5 +1,5 @@
 # Mantém data classes do pacote data (não obfusca)
--keep class com.lucapp.signalmeter.data.** { *; }
+-keep class com.example.ls.data.** { *; }
 
 # TelephonyManager e classes de célula do Android SDK
 -keep class android.telephony.** { *; }
