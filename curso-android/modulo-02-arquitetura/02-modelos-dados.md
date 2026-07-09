@@ -157,11 +157,14 @@ val cor = networkType.badgeColor   // pronto!
 
 ```kotlin
 // Todos os valores de um enum:
-NetworkType.values().forEach { tipo ->
+NetworkType.entries.forEach { tipo ->
     println("${tipo.label} (${tipo.generation})")
 }
 // GSM (2G), CDMA (2G), WCDMA (3G), ...
 ```
+
+**Nota:** desde o Kotlin 1.9, `entries` (uma `List` imutável) substitui `values()`
+(que aloca um novo array a cada chamada). O compilador já sugere a troca.
 
 ---
 

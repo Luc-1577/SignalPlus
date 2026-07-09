@@ -9,14 +9,14 @@
 O Compose tem três containers principais:
 
 ```
-Column → empilha verticalmente  │  Row → enfileira horizontalmente  │  Box → sobrepõe
-         ┌────────────┐         │       ┌───┬───┬───┐              │       ┌────────┐
-         │ Elemento 1 │         │       │ A │ B │ C │              │       │ fundo  │
-         ├────────────┤         │       └───┴───┴───┘              │       │  ┌──┐  │
-         │ Elemento 2 │         │                                   │       │  │  │  │
-         ├────────────┤         │                                   │       │  └──┘  │
-         │ Elemento 3 │         │                                   │       └────────┘
-         └────────────┘         │                                   │
+Column → empilha verticalmente │ Row → enfileira horizontalmente │ Box → sobrepõe
+         ┌────────────┐        │        ┌───┬───┬───┐            │        ┌────────┐
+         │ Elemento 1 │        │        │ A │ B │ C │            │        │ fundo  │
+         ├────────────┤        │        └───┴───┴───┘            │        │  ┌──┐  │
+         │ Elemento 2 │        │                                 │        │  │  │  │
+         ├────────────┤        │                                 │        │  └──┘  │
+         │ Elemento 3 │        │                                 │        └────────┘
+         └────────────┘        │                                 │
 ```
 
 ---

@@ -55,6 +55,8 @@ plugins {
 ### `app/build.gradle.kts` — configuração do módulo app
 
 ```kotlin
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -63,12 +65,12 @@ plugins {
 
 android {
     namespace  = "com.example.ls"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.ls"
         minSdk    = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -94,15 +96,23 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true      // habilita o compilador Compose
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+```
+
+**Nota:** o bloco `android.kotlinOptions { jvmTarget = "17" }` (usado em versões antigas
+de tutoriais) foi depreciado a partir do Kotlin 2.0. Hoje o `jvmTarget` é configurado
+no bloco `kotlin { compilerOptions { ... } }`, fora do `android {}`.
+
+```kotlin
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -132,16 +142,16 @@ O Version Catalog (`gradle/libs.versions.toml`) centraliza todas as versões em 
 ```toml
 [versions]
 # Ferramentas de build
-agp             = "9.1.0"
-kotlin          = "2.2.10"
+agp             = "9.2.0"
+kotlin          = "2.4.0"
 
 # AndroidX
-core-ktx        = "1.15.0"
-lifecycle       = "2.8.7"
-activity-compose = "1.9.3"
+core-ktx        = "1.17.0"
+lifecycle       = "2.10.0"
+activity-compose = "1.13.0"
 
 # Compose
-compose-bom     = "2024.11.00"
+compose-bom     = "2026.06.00"
 
 [libraries]
 # AndroidX
@@ -187,10 +197,11 @@ org.gradle.configuration-cache=true
 # Kotlin
 kotlin.code.style=official
 kotlin.incremental=true
-
-# R8 fullMode — otimizações mais agressivas (APK menor)
-android.enableR8.fullMode=true
 ```
+
+**Nota:** desde o AGP 8.0, o R8 já roda em "full mode" por padrão — a propriedade
+`android.enableR8.fullMode=true` (comum em tutoriais mais antigos) é redundante e
+pode ser removida.
 
 ---
 

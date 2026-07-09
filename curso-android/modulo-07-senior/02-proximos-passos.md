@@ -94,25 +94,32 @@ abstract class AppDatabase : RoomDatabase() {
 
 #### 3. Navigation Compose — navegação entre telas
 
+Desde o Navigation 2.8, a forma recomendada é **type-safe**: cada destino é uma
+classe `@Serializable`, sem rotas em `String` (elimina erros de digitação e de tipo
+em tempo de compilação):
+
 ```kotlin
+@Serializable
+object Main
+
+@Serializable
+data class Details(val cellId: String)
+
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    NavHost(navController, startDestination = "main") {
-        composable("main") {
+    NavHost(navController, startDestination = Main) {
+        composable<Main> {
             MainScreen(
                 onNavigateToDetails = { cellId ->
-                    navController.navigate("details/$cellId")
+                    navController.navigate(Details(cellId))
                 }
             )
         }
-        composable(
-            "details/{cellId}",
-            arguments = listOf(navArgument("cellId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val cellId = backStackEntry.arguments?.getString("cellId")
-            CellDetailsScreen(cellId = cellId)
+        composable<Details> { backStackEntry ->
+            val details = backStackEntry.toRoute<Details>()
+            CellDetailsScreen(cellId = details.cellId)
         }
     }
 }

@@ -91,7 +91,7 @@ viewModelScope.launch {
 (disco girando, pacote de rede chegando). Uma pool grande garante que outras operações
 de I/O não ficam esperando uma liberar a thread.
 
-Típicamente: `min(64, nCpus + 1)` threads.
+Típicamente: `max(64, nCpus)` threads.
 
 ---
 

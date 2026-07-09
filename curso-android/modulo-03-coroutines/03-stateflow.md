@@ -171,8 +171,8 @@ Na `HistoryScreen`:
 ```kotlin
 @Composable
 fun HistoryScreen(history: SignalHistory) {
-    // Coleta os pontos do histórico
-    val points by history.points.collectAsState()
+    // Coleta os pontos do histórico (WithLifecycle, como na seção anterior)
+    val points by history.points.collectAsStateWithLifecycle()
 
     // Recompõe automaticamente quando um novo ponto é adicionado
     SignalChart(points = points)
