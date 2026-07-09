@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew testDebugUnitTest      # Debug variant unit tests only
 ```
 
-**SDK/toolchain:** compileSdk 35, minSdk 26, targetSdk 35, JVM target 17, Kotlin 2.2.10, AGP 9.1.0, Gradle 9.3.1.
+**SDK/toolchain:** compileSdk 36, minSdk 26, targetSdk 36, JVM target 17, Kotlin 2.4.0, AGP 9.2.0, Gradle 9.6.1.
 
 ## Architecture
 
