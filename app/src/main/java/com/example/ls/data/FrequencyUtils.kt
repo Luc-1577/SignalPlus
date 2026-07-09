@@ -1,5 +1,7 @@
 package com.example.ls.data
 
+import java.util.Locale
+
 // ── LTE Band Table (3GPP TS 36.101 §5.7.3) ────────────────────────────────
 
 private data class LteBand(
@@ -81,11 +83,11 @@ fun taToDistanceMeters(ta: Int): Double? =
     if (ta > 0 && ta != Int.MAX_VALUE) ta * 78.125 else null
 
 fun formatMhz(mhz: Double): String =
-    if (mhz >= 1000.0) "${"%.3f".format(mhz / 1000.0)} GHz"
-    else "${"%.1f".format(mhz)} MHz"
+    if (mhz >= 1000.0) "${"%.3f".format(Locale.US, mhz / 1000.0)} GHz"
+    else "${"%.1f".format(Locale.US, mhz)} MHz"
 
 fun formatBwKhz(khz: Int): String =
-    if (khz >= 1000) "${"%.0f".format(khz / 1000.0)} MHz" else "$khz kHz"
+    if (khz >= 1000) "${"%.0f".format(Locale.US, khz / 1000.0)} MHz" else "$khz kHz"
 
 fun formatDistance(meters: Double): String =
-    if (meters < 1000.0) "~${meters.toInt()} m" else "~${"%.1f".format(meters / 1000.0)} km"
+    if (meters < 1000.0) "~${meters.toInt()} m" else "~${"%.1f".format(Locale.US, meters / 1000.0)} km"

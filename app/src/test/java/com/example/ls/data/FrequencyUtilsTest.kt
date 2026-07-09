@@ -8,13 +8,6 @@ class FrequencyUtilsTest {
 
     private val DELTA = 0.001
 
-    // formatMhz/formatBwKhz/formatDistance use Kotlin's String.format with the
-    // JVM default locale, so the decimal separator (e.g. "." vs ",") depends on
-    // the machine running the test. Build expectations against that same
-    // separator instead of hardcoding "." so these tests pass on any locale.
-    private val DECIMAL_SEP = java.text.DecimalFormatSymbols.getInstance().decimalSeparator
-    private fun dec(s: String) = s.replace('.', DECIMAL_SEP)
-
     // ── earfcnToInfo ────────────────────────────────────────────────────────
 
     @Test
@@ -225,17 +218,17 @@ class FrequencyUtilsTest {
 
     @Test
     fun `formatMhz below 1000 uses MHz with one decimal`() {
-        assertEquals(dec("850.0 MHz"), formatMhz(850.0))
+        assertEquals("850.0 MHz", formatMhz(850.0))
     }
 
     @Test
     fun `formatMhz at 1000 boundary switches to GHz`() {
-        assertEquals(dec("1.000 GHz"), formatMhz(1000.0))
+        assertEquals("1.000 GHz", formatMhz(1000.0))
     }
 
     @Test
     fun `formatMhz above 1000 uses GHz with three decimals`() {
-        assertEquals(dec("1.500 GHz"), formatMhz(1500.0))
+        assertEquals("1.500 GHz", formatMhz(1500.0))
     }
 
     // ── formatBwKhz ─────────────────────────────────────────────────────────
@@ -264,11 +257,11 @@ class FrequencyUtilsTest {
 
     @Test
     fun `formatDistance at 1000 boundary switches to km`() {
-        assertEquals(dec("~1.0 km"), formatDistance(1000.0))
+        assertEquals("~1.0 km", formatDistance(1000.0))
     }
 
     @Test
     fun `formatDistance above 1000 uses km with one decimal`() {
-        assertEquals(dec("~2.5 km"), formatDistance(2500.0))
+        assertEquals("~2.5 km", formatDistance(2500.0))
     }
 }
