@@ -1,12 +1,17 @@
 package com.example.ls
 
-import androidx.test.platform.app.InstrumentationRegistry
+import android.Manifest
+import android.os.Build
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.rule.GrantPermissionRule
 
+import org.junit.Assert.assertEquals
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-
-import org.junit.Assert.*
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -15,10 +20,43 @@ import org.junit.Assert.*
  */
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
+
+    // MainScreen requests READ_PHONE_STATE/location permissions automatically on launch
+    // (LifecycleStartEffect in MainScreen.kt). Without pre-granting them here, the system's
+    // GrantPermissionsActivity pops up over MainActivity as soon as the test launches it,
+    // so the Compose hierarchy under test is unmounted and ComposeTestRule can't find it
+    // ("No compose hierarchies found"). Granting up front (order = 0, before the activity
+    // is launched by composeRule) keeps MainActivity in the foreground.
+    @get:Rule(order = 0)
+    val permissionRule: GrantPermissionRule = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        GrantPermissionRule.grant(
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        )
+    } else {
+        GrantPermissionRule.grant(Manifest.permission.READ_PHONE_STATE)
+    }
+
+    @get:Rule(order = 1)
+    val composeRule = createAndroidComposeRule<MainActivity>()
+
     @Test
     fun useAppContext() {
         // Context of the app under test.
+        // NOTE: comparing against the literal "com.example.ls" is wrong for the debug
+        // build type, which appends applicationIdSuffix = ".debug" (see app/build.gradle.kts),
+        // making the real runtime package "com.example.ls.debug". Compare against
+        // BuildConfig.APPLICATION_ID instead so this stays correct for any build variant.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.example.ls", appContext.packageName)
+        assertEquals(BuildConfig.APPLICATION_ID, appContext.packageName)
+    }
+
+    @Test
+    fun mainActivity_launchesAndShowsTitle() {
+        // MainActivity must launch without crashing and the top bar title
+        // "Signal Meter" is rendered in every SignalUiState branch (Loading,
+        // PermissionRequired, Success, Error) — see AppTopBar in MainScreen.kt.
+        composeRule.onNodeWithText("Signal Meter").assertExists()
     }
 }
