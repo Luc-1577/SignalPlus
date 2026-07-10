@@ -1022,7 +1022,7 @@ Na build de release, R8 faz três otimizações:
 2. **Ofuscação:** renomeia classes e métodos para nomes curtos (dificulta engenharia reversa).
 3. **Otimização de bytecode:** inline de métodos, remoção de código morto.
 
-As regras em `proguard-rules.pro` mantêm os data classes (`com.lucapp.signalmeter.data.**`),
+As regras em `proguard-rules.pro` mantêm os data classes (`com.example.ls.data.**`),
 as APIs de TelephonyManager (necessárias para a reflexão) e os metadados Kotlin (necessários
 para `data class` com named parameters).
 
