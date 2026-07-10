@@ -20,7 +20,7 @@ object CsvFormatter {
     }
 
     private fun escape(field: String): String =
-        if (field.contains(',') || field.contains('"') || field.contains('\n'))
+        if (field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r'))
             "\"${field.replace("\"", "\"\"")}\""
         else field
 }

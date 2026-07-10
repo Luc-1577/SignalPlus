@@ -47,4 +47,18 @@ class CsvFormatterTest {
         val csv = CsvFormatter.toCsv(listOf(reading))
         assertEquals("timestamp_utc,dbm,network_type,operator\n1970-01-01T00:00:00Z,-85,LTE,\"Say \"\"Hi\"\"\"\n", csv)
     }
+
+    @Test
+    fun `toCsv escapes operator names containing a lone carriage return`() {
+        val reading = SignalReadingEntity(timestampMs = 0L, dbm = -85, networkType = "LTE", operator = "Vivo\rBR")
+        val csv = CsvFormatter.toCsv(listOf(reading))
+        assertEquals("timestamp_utc,dbm,network_type,operator\n1970-01-01T00:00:00Z,-85,LTE,\"Vivo\rBR\"\n", csv)
+    }
+
+    @Test
+    fun `toCsv preserves unicode and emoji in operator names without escaping`() {
+        val reading = SignalReadingEntity(timestampMs = 0L, dbm = -85, networkType = "LTE", operator = "Vivo 📶 Brasil")
+        val csv = CsvFormatter.toCsv(listOf(reading))
+        assertEquals("timestamp_utc,dbm,network_type,operator\n1970-01-01T00:00:00Z,-85,LTE,Vivo 📶 Brasil\n", csv)
+    }
 }

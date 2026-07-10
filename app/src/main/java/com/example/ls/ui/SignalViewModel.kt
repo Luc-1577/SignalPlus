@@ -11,6 +11,7 @@ import com.example.ls.data.SignalUiState
 import com.example.ls.data.db.AppDatabase
 import com.example.ls.data.db.SignalReadingEntity
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,6 +32,20 @@ class SignalViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = SignalRepository(app)
     private val settingsRepository = SettingsRepository(app)
     private val readingDao = AppDatabase.getDatabase(app).signalReadingDao()
+
+    // Fila serializada para as escritas do Room: refreshOnce() apenas enfileira
+    // (nunca suspende nem falha — capacidade ilimitada), e uma única corrotina
+    // consome e grava uma leitura por vez. Isso evita empilhar uma corrotina de
+    // escrita concorrente por tick de polling caso o disco fique lento.
+    private val pendingInserts = Channel<SignalReadingEntity>(capacity = Channel.UNLIMITED)
+
+    init {
+        viewModelScope.launch {
+            for (reading in pendingInserts) {
+                try { readingDao.insert(reading) } catch (_: Exception) {}
+            }
+        }
+    }
 
     private val _uiState = MutableStateFlow<SignalUiState>(SignalUiState.Loading)
     val uiState: StateFlow<SignalUiState> = _uiState.asStateFlow()
@@ -86,20 +101,18 @@ class SignalViewModel(app: Application) : AndroidViewModel(app) {
                 if (cell.dbm != Int.MIN_VALUE && cell.dbm != Int.MAX_VALUE && cell.dbm != 0) {
                     val timestampMs = System.currentTimeMillis()
                     history.add(SignalPoint(timestampMs, cell.dbm, cell.networkType))
-                    // Trilha paralela e permanente (Room) — fire-and-forget para nunca
-                    // atrasar o ciclo de polling nem o _uiState com latência de disco.
-                    viewModelScope.launch {
-                        try {
-                            readingDao.insert(
-                                SignalReadingEntity(
-                                    timestampMs = timestampMs,
-                                    dbm         = cell.dbm,
-                                    networkType = cell.networkType.name,
-                                    operator    = cell.operator,
-                                )
-                            )
-                        } catch (_: Exception) {}
-                    }
+                    // Trilha paralela e permanente (Room) — apenas enfileira (nunca
+                    // suspende) para nunca atrasar o ciclo de polling nem o _uiState
+                    // com latência de disco; a escrita real é serializada por
+                    // pendingInserts (ver acima).
+                    pendingInserts.trySend(
+                        SignalReadingEntity(
+                            timestampMs = timestampMs,
+                            dbm         = cell.dbm,
+                            networkType = cell.networkType.name,
+                            operator    = cell.operator,
+                        )
+                    )
                 }
             }
             _uiState.value = SignalUiState.Success(primary = primary, allCells = cells)
