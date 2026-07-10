@@ -61,6 +61,7 @@ private val TABS = listOf(
     TabItem(AppTab.SIGNAL, "Sinal", Icons.Default.SignalCellularAlt),
     TabItem(AppTab.HISTORY, "Histórico", Icons.AutoMirrored.Filled.ShowChart),
     TabItem(AppTab.INFO, "Info", Icons.Default.Info),
+    TabItem(AppTab.SETTINGS, "Config", Icons.Default.Settings),
 )
 
 // ── MainScreen ─────────────────────────────────────────────────────────────
@@ -70,6 +71,7 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
     val context = LocalContext.current
     val state by vm.uiState.collectAsStateWithLifecycle()
     val currentTab by vm.currentTab.collectAsStateWithLifecycle()
+    val pollIntervalMs by vm.pollIntervalMs.collectAsStateWithLifecycle()
 
     val perms = remember {
         buildList {
@@ -154,9 +156,15 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
                             AppTab.HISTORY -> HistoryScreen(
                                 history = vm.history,
                                 onClear = { vm.clearHistory() },
+                                onExport = { vm.getAllReadings() },
                             )
 
                             AppTab.INFO -> InfoScreen()
+                            AppTab.SETTINGS -> SettingsScreen(
+                                pollIntervalMs = pollIntervalMs,
+                                onPollIntervalChange = { vm.setPollIntervalMs(it) },
+                                onClearPersistedHistory = { vm.clearPersistedHistory() },
+                            )
                         }
                     }
                 }

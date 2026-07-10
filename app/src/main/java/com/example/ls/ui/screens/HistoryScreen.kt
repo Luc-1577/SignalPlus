@@ -1,5 +1,6 @@
 package com.example.ls.ui.screens
 
+import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,12 +11,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -23,32 +26,65 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ls.data.SignalHistory
 import com.example.ls.data.SignalPoint
+import com.example.ls.data.db.SignalReadingEntity
 import com.example.ls.data.signalQuality
 import com.example.ls.ui.components.*
 import com.example.ls.ui.theme.*
+import com.example.ls.util.CsvExportUtil
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun HistoryScreen(history: SignalHistory, onClear: () -> Unit, modifier: Modifier = Modifier) {
+fun HistoryScreen(
+    history: SignalHistory,
+    onClear: () -> Unit,
+    onExport: suspend () -> List<SignalReadingEntity>,
+    modifier: Modifier = Modifier,
+) {
     val points by history.points.collectAsStateWithLifecycle()
     val (minDbm, maxDbm) = history.range()
     val avg    = history.average()
     val stdDev = history.stdDev()
     val minPt  = points.minByOrNull { it.dbm }
     val maxPt  = points.maxByOrNull { it.dbm }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ShowChart, null, tint = AccentCyan, modifier = Modifier.size(20.dp))
-                    Text("Histórico de Sinal", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.AutoMirrored.Filled.ShowChart, null, tint = AccentCyan, modifier = Modifier.size(20.dp))
+                        Text("Histórico de Sinal", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    }
+                    Row {
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    val intent = CsvExportUtil.buildShareIntent(context, onExport())
+                                    context.startActivity(Intent.createChooser(intent, "Exportar histórico"))
+                                }
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = AccentBlue),
+                        ) {
+                            Icon(Icons.Default.FileDownload, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text("Exportar", fontSize = 13.sp)
+                        }
+                        if (points.isNotEmpty()) {
+                            TextButton(onClick = onClear, colors = ButtonDefaults.textButtonColors(contentColor = QualityVeryPoor)) {
+                                Icon(Icons.Default.DeleteOutline, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text("Limpar", fontSize = 13.sp)
+                            }
+                        }
+                    }
                 }
                 if (points.isNotEmpty()) {
-                    TextButton(onClick = onClear, colors = ButtonDefaults.textButtonColors(contentColor = QualityVeryPoor)) {
-                        Icon(Icons.Default.DeleteOutline, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text("Limpar", fontSize = 13.sp)
-                    }
+                    Text(
+                        "\"Limpar\" só afeta esta tela — o histórico completo continua salvo para exportação.",
+                        fontSize = 10.sp,
+                        color = TextDim,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
             }
         }
