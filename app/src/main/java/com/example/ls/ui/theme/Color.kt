@@ -17,8 +17,8 @@ val BorderBright  = Color(0xFF2E4270)
 // ── Text ──────────────────────────────────────────────────────────────────
 val TextPrimary   = Color(0xFFE2E8F7)
 val TextSecondary = Color(0xFF7A8EAF)
-val TextMuted     = Color(0xFF4A5D7A)
-val TextDim       = Color(0xFF2E3C56)
+val TextMuted     = Color(0xFF768BAC)
+val TextDim       = Color(0xFF6F87B2)
 
 // ── Accent ────────────────────────────────────────────────────────────────
 val AccentBlue    = Color(0xFF3D84F5)
@@ -31,7 +31,7 @@ val QualityPoor     = Color(0xFFF97020)
 val QualityFair     = Color(0xFFF5C020)
 val QualityGood     = Color(0xFF7ED348)
 val QualityExcel    = Color(0xFF22D36A)
-val QualityNone     = Color(0xFF3A4A65)
+val QualityNone     = Color(0xFF7188AE)
 
 // ── Badge de tipo de rede ─────────────────────────────────────────────────
 val Net2G = Color(0xFF64748B)
