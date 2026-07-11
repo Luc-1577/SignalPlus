@@ -21,6 +21,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ls.data.*
 import com.example.ls.ui.theme.*
+import java.util.Locale
+
+/** Formata um intervalo em ms de forma legível ("500ms", "1 segundo", "5 segundos"). */
+fun formatIntervalLabel(ms: Long): String = when {
+    ms < 1000L      -> "${ms}ms"
+    ms % 1000L == 0L -> (ms / 1000L).let { s -> if (s == 1L) "1 segundo" else "$s segundos" }
+    else            -> "%.1fs".format(Locale.US, ms / 1000.0)
+}
 
 @Composable
 fun NetworkBadge(type: NetworkType, modifier: Modifier = Modifier) {

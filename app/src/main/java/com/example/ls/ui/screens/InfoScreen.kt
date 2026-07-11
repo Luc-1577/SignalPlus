@@ -19,16 +19,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ls.data.*
 import com.example.ls.ui.components.NetworkBadge
+import com.example.ls.ui.components.formatIntervalLabel
 import com.example.ls.ui.theme.*
 
 @Composable
-fun InfoScreen(modifier: Modifier = Modifier) {
+fun InfoScreen(pollIntervalMs: Long, modifier: Modifier = Modifier) {
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item { InfoHeader() }
         item { InfoCard("Referência de qualidade") { QualityTable() } }
         item { InfoCard("Tecnologias de rede") { NetworkTable() } }
         item { InfoCard("Glossário de métricas") { MetricsTable() } }
-        item { InfoCard("Como a leitura funciona") { HowItWorks() } }
+        item { InfoCard("Como a leitura funciona") { HowItWorks(pollIntervalMs) } }
         item { Spacer(Modifier.height(16.dp)) }
     }
 }
@@ -112,11 +113,11 @@ private fun MetricsTable() {
 }
 
 @Composable
-private fun HowItWorks() {
+private fun HowItWorks(pollIntervalMs: Long) {
     listOf(
         Icons.Default.PhoneAndroid to "Usa TelephonyManager.getAllCellInfo() para ler os dados brutos do modem.",
         Icons.Default.CellTower    to "Cada CellInfo é uma antena detectada — não só a conectada, mas as vizinhas também.",
-        Icons.Default.Refresh      to "Atualizado a cada 1 segundo. O Android pode limitar a frequência em alguns aparelhos.",
+        Icons.Default.Refresh      to "Atualizado a cada ${formatIntervalLabel(pollIntervalMs)}. O Android pode limitar a frequência em alguns aparelhos.",
         Icons.Default.Lock         to "A partir do Android 9 (API 28), exige permissão de localização — só para o sinal, sem rastreamento.",
         Icons.Default.BarChart     to "Os dBm vêm diretamente do hardware via driver — são medições reais, não estimativas.",
     ).forEachIndexed { idx, (icon, text) ->

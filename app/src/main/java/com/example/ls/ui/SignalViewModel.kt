@@ -6,12 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.ls.data.SettingsRepository
 import com.example.ls.data.SignalHistory
 import com.example.ls.data.SignalPoint
+import com.example.ls.data.SignalReadingRepository
 import com.example.ls.data.SignalRepository
 import com.example.ls.data.SignalUiState
-import com.example.ls.data.db.AppDatabase
 import com.example.ls.data.db.SignalReadingEntity
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -31,21 +30,7 @@ class SignalViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository = SignalRepository(app)
     private val settingsRepository = SettingsRepository(app)
-    private val readingDao = AppDatabase.getDatabase(app).signalReadingDao()
-
-    // Fila serializada para as escritas do Room: refreshOnce() apenas enfileira
-    // (nunca suspende nem falha — capacidade ilimitada), e uma única corrotina
-    // consome e grava uma leitura por vez. Isso evita empilhar uma corrotina de
-    // escrita concorrente por tick de polling caso o disco fique lento.
-    private val pendingInserts = Channel<SignalReadingEntity>(capacity = Channel.UNLIMITED)
-
-    init {
-        viewModelScope.launch {
-            for (reading in pendingInserts) {
-                try { readingDao.insert(reading) } catch (_: Exception) {}
-            }
-        }
-    }
+    private val readingRepository = SignalReadingRepository(app)
 
     private val _uiState = MutableStateFlow<SignalUiState>(SignalUiState.Loading)
     val uiState: StateFlow<SignalUiState> = _uiState.asStateFlow()
@@ -87,11 +72,11 @@ class SignalViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Apaga o histórico persistido (Room) — irreversível, distinto de [clearHistory]. */
     fun clearPersistedHistory() {
-        viewModelScope.launch { try { readingDao.clearAll() } catch (_: Exception) {} }
+        viewModelScope.launch { try { readingRepository.clearAll() } catch (_: Exception) {} }
     }
 
     /** Histórico completo persistido (Room), não só a janela de [HISTORY_CAPACITY] em RAM. */
-    suspend fun getAllReadings(): List<SignalReadingEntity> = readingDao.getAll()
+    suspend fun getAllReadings(): List<SignalReadingEntity> = readingRepository.getAll()
 
     private suspend fun refreshOnce() {
         try {
@@ -101,18 +86,23 @@ class SignalViewModel(app: Application) : AndroidViewModel(app) {
                 if (cell.dbm != Int.MIN_VALUE && cell.dbm != Int.MAX_VALUE && cell.dbm != 0) {
                     val timestampMs = System.currentTimeMillis()
                     history.add(SignalPoint(timestampMs, cell.dbm, cell.networkType))
-                    // Trilha paralela e permanente (Room) — apenas enfileira (nunca
-                    // suspende) para nunca atrasar o ciclo de polling nem o _uiState
-                    // com latência de disco; a escrita real é serializada por
-                    // pendingInserts (ver acima).
-                    pendingInserts.trySend(
-                        SignalReadingEntity(
-                            timestampMs = timestampMs,
-                            dbm         = cell.dbm,
-                            networkType = cell.networkType.name,
-                            operator    = cell.operator,
-                        )
-                    )
+                    // Trilha paralela e permanente (Room) — roda em sua própria
+                    // corrotina para nunca atrasar o ciclo de polling nem o
+                    // _uiState com latência de disco. O SignalReadingRepository
+                    // serializa essa gravação com clearAll()/getAll() via Mutex,
+                    // então não há corrida com "Apagar histórico" nem com "Exportar".
+                    viewModelScope.launch {
+                        try {
+                            readingRepository.record(
+                                SignalReadingEntity(
+                                    timestampMs = timestampMs,
+                                    dbm         = cell.dbm,
+                                    networkType = cell.networkType.name,
+                                    operator    = cell.operator,
+                                )
+                            )
+                        } catch (_: Exception) {}
+                    }
                 }
             }
             _uiState.value = SignalUiState.Success(primary = primary, allCells = cells)

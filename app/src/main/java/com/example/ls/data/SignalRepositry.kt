@@ -6,6 +6,7 @@ import android.telephony.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 /**
@@ -14,6 +15,11 @@ import kotlin.coroutines.resume
  * ARFCN/EARFCN/NRARFCN/UARFCN, FDL, FUL, Banda, BW e Timing Advance.
  */
 class SignalRepository(private val context: Context) {
+
+    private companion object {
+        /** Alguns OEMs nunca chamam onCellInfo/onError; sem isso o polling trava para sempre. */
+        const val CELL_INFO_TIMEOUT_MS = 5_000L
+    }
 
     private val telephony: TelephonyManager by lazy {
         context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
@@ -43,24 +49,28 @@ class SignalRepository(private val context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return telephony.allCellInfo ?: emptyList()
         }
-        return try {
-            suspendCancellableCoroutine { cont ->
-                telephony.requestCellInfoUpdate(
-                    context.mainExecutor,
-                    object : TelephonyManager.CellInfoCallback() {
-                        override fun onCellInfo(cellInfo: List<CellInfo>) {
-                            if (cont.isActive) cont.resume(cellInfo)
-                        }
+        val fresh = try {
+            withTimeoutOrNull(CELL_INFO_TIMEOUT_MS) {
+                suspendCancellableCoroutine<List<CellInfo>> { cont ->
+                    telephony.requestCellInfoUpdate(
+                        context.mainExecutor,
+                        object : TelephonyManager.CellInfoCallback() {
+                            override fun onCellInfo(cellInfo: List<CellInfo>) {
+                                if (cont.isActive) cont.resume(cellInfo)
+                            }
 
-                        override fun onError(errorCode: Int, detail: Throwable?) {
-                            if (cont.isActive) cont.resume(telephony.allCellInfo ?: emptyList())
-                        }
-                    },
-                )
+                            override fun onError(errorCode: Int, detail: Throwable?) {
+                                if (cont.isActive) cont.resume(telephony.allCellInfo ?: emptyList())
+                            }
+                        },
+                    )
+                }
             }
         } catch (_: Exception) {
-            telephony.allCellInfo ?: emptyList()
+            null
         }
+        // null = timeout (modem nunca chamou onCellInfo/onError) ou exceção — cai pro cache.
+        return fresh ?: (telephony.allCellInfo ?: emptyList())
     }
 
     private fun readPrimaryBwKhz(): Int? {

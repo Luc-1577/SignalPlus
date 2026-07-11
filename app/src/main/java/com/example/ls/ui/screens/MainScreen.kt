@@ -87,11 +87,19 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
 
-    // false só é conclusivo depois de já termos pedido a permissão uma vez:
-    // antes da primeira solicitação, o sistema também retorna false aqui.
-    fun canAskAgain(): Boolean {
-        val activity = context.findActivity() ?: return true
-        return perms.any { ActivityCompat.shouldShowRequestPermissionRationale(activity, it) }
+    // Checa por permissão: só é conclusivo depois de já termos pedido pelo menos
+    // uma vez (antes da primeira solicitação o sistema também retorna false para
+    // toda permissão nunca pedida). Se QUALQUER permissão ainda faltando não pode
+    // mais mostrar rationale, ela foi negada permanentemente — pedir de novo não
+    // adianta, só dá pra resolver via Configurações do sistema. Checar por
+    // permissão (em vez de `.any` sobre o grupo inteiro) evita classificar errado
+    // um estado misto (ex: localização negada para sempre, telefone só negada uma vez).
+    fun hasAnyPermanentlyDenied(): Boolean {
+        val activity = context.findActivity() ?: return false
+        return perms.any { perm ->
+            ContextCompat.checkSelfPermission(context, perm) != PackageManager.PERMISSION_GRANTED &&
+                !ActivityCompat.shouldShowRequestPermissionRationale(activity, perm)
+        }
     }
 
     var permanentlyDenied by remember { mutableStateOf(false) }
@@ -103,16 +111,24 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
             permanentlyDenied = false
             vm.startPolling()
         } else {
-            permanentlyDenied = !canAskAgain()
+            permanentlyDenied = hasAnyPermanentlyDenied()
             vm.onPermissionDenied()
         }
     }
 
-    // Amarrado ao ciclo de vida (não à composição): pausa o polling quando o
-    // app vai para background (ON_STOP) e retoma ao voltar (ON_START), em vez
-    // de só parar quando a Activity inteira é destruída.
-    LifecycleStartEffect(Unit) {
+    // Pede a permissão automaticamente só na primeira entrada na tela — depois
+    // disso, cabe ao usuário tentar de novo pelo botão da PermissionScreen.
+    LaunchedEffect(Unit) {
         if (hasPerms()) vm.startPolling() else launcher.launch(perms)
+    }
+
+    // Amarrado ao ciclo de vida (não à composição): retoma o polling quando o
+    // app volta do background (ON_START) SE a permissão já estiver concedida —
+    // não relança o diálogo de permissão a cada retorno (isso já é feito uma
+    // única vez acima). Pausa em ON_STOP, em vez de só parar quando a Activity
+    // inteira é destruída.
+    LifecycleStartEffect(Unit) {
+        if (hasPerms()) vm.startPolling()
         onStopOrDispose { vm.stopPolling() }
     }
 
@@ -157,9 +173,10 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
                                 history = vm.history,
                                 onClear = { vm.clearHistory() },
                                 onExport = { vm.getAllReadings() },
+                                pollIntervalMs = pollIntervalMs,
                             )
 
-                            AppTab.INFO -> InfoScreen()
+                            AppTab.INFO -> InfoScreen(pollIntervalMs = pollIntervalMs)
                             AppTab.SETTINGS -> SettingsScreen(
                                 pollIntervalMs = pollIntervalMs,
                                 onPollIntervalChange = { vm.setPollIntervalMs(it) },

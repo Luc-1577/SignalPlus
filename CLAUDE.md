@@ -27,12 +27,18 @@ app/src/main/java/com/example/ls/
 ├── MainActivity.kt              # Single activity, edge-to-edge, portrait-only
 ├── data/
 │   ├── SignaData.kt             # All data models: enums, sealed classes, UiState
-│   ├── SignalHistory.kt         # Circular buffer (90 points) with rolling statistics
+│   ├── SignalHistory.kt         # Circular buffer (90 points) with rolling statistics, in-memory only
 │   ├── SignalRepositry.kt       # Hardware abstraction over TelephonyManager
-│   └── FrequencyUtils.kt       # 3GPP ARFCN↔frequency math (NR/LTE/WCDMA/GSM)
+│   ├── SignalReadingRepository.kt # Room-backed permanent history (Mutex-serialized insert/getAll/clearAll)
+│   ├── SettingsRepository.kt    # DataStore-backed user settings (poll interval)
+│   ├── FrequencyUtils.kt        # 3GPP ARFCN↔frequency math (NR/LTE/WCDMA/GSM)
+│   ├── CsvFormatter.kt          # Pure history→CSV formatting (no Android deps)
+│   └── db/                      # Room: AppDatabase (singleton), SignalReadingDao, SignalReadingEntity
+├── util/
+│   └── CsvExportUtil.kt         # cacheDir write + FileProvider Uri + share Intent
 └── ui/
-    ├── SignalViewModel.kt       # 1-second polling, StateFlow, tab state
-    └── screens/ + components/  # Stateless Compose functions; Canvas gauge & chart
+    ├── SignalViewModel.kt       # Configurable polling (default 1s), StateFlow, tab state
+    └── screens/ + components/  # Stateless Compose functions; Canvas gauge & chart; SettingsScreen
 ```
 
 **Key design decisions:**
@@ -40,6 +46,7 @@ app/src/main/java/com/example/ls/
 - All hardware I/O runs on `Dispatchers.IO`; StateFlow emissions are consumed on the main thread by Compose.
 - `UiState` is a sealed class (Loading / PermissionRequired / Success / Error) — every screen branch handles all four states.
 - Data models in `SignaData.kt` are pure `data class`/`enum`/`sealed class` with no Android dependencies, making them unit-testable in isolation.
+- Signal history has two independent tracks: `SignalHistory` (90-point RAM ring buffer, feeds the live chart) and `SignalReadingRepository` (Room, unbounded, feeds CSV export) — both written from the same point in `SignalViewModel.refreshOnce()`, but through separate models (`SignalPoint` vs `SignalReadingEntity`).
 
 ## Permissions
 

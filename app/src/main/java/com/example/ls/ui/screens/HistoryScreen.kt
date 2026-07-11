@@ -31,7 +31,9 @@ import com.example.ls.data.signalQuality
 import com.example.ls.ui.components.*
 import com.example.ls.ui.theme.*
 import com.example.ls.util.CsvExportUtil
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -40,6 +42,7 @@ fun HistoryScreen(
     history: SignalHistory,
     onClear: () -> Unit,
     onExport: suspend () -> List<SignalReadingEntity>,
+    pollIntervalMs: Long,
     modifier: Modifier = Modifier,
 ) {
     val points by history.points.collectAsStateWithLifecycle()
@@ -63,7 +66,15 @@ fun HistoryScreen(
                         TextButton(
                             onClick = {
                                 scope.launch {
-                                    val intent = CsvExportUtil.buildShareIntent(context, onExport())
+                                    val readings = onExport()
+                                    // toCsv()/writeText() são CPU/I/O de disco — não têm
+                                    // ponto de suspensão próprio, então sem isso rodariam
+                                    // na thread principal (herdada do rememberCoroutineScope)
+                                    // e travariam a UI proporcionalmente ao tamanho do
+                                    // histórico, que agora não tem limite no Room.
+                                    val intent = withContext(Dispatchers.IO) {
+                                        CsvExportUtil.buildShareIntent(context, readings)
+                                    }
                                     context.startActivity(Intent.createChooser(intent, "Exportar histórico"))
                                 }
                             },
@@ -102,7 +113,12 @@ fun HistoryScreen(
                     Spacer(Modifier.width(4.dp))
                     SignalChart(points, minDbm, maxDbm, Modifier.weight(1f))
                 }
-                Text("${points.size} leituras nos últimos ${points.size}s", fontSize = 10.sp, color = TextDim, modifier = Modifier.padding(top = 8.dp))
+                Text(
+                    "${points.size} leituras nos últimos ${formatIntervalLabel(points.size * pollIntervalMs)}",
+                    fontSize = 10.sp,
+                    color = TextDim,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
         }
         if (points.size >= 2) {

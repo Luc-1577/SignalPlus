@@ -15,10 +15,17 @@ val BorderDefault = Color(0xFF243354)
 val BorderBright  = Color(0xFF2E4270)
 
 // ── Text ──────────────────────────────────────────────────────────────────
+// TextMuted/TextDim: usadas lado a lado em CellIdentifiersCard.kt (TextDim para
+// labels de seção, mais sutil; TextMuted para labels de campo, mais proeminente).
+// Ambas ≥4.5:1 de contraste AA contra BgCard; TextMuted foi propositalmente
+// separada de TextDim (~6.7:1 vs ~4.6:1) para a hierarquia entre elas ficar
+// perceptível — mesmo que isso deixe TextMuted com contraste maior que
+// TextSecondary (que nunca aparece ao lado de TextMuted/TextDim, então essa
+// comparação não importa na prática).
 val TextPrimary   = Color(0xFFE2E8F7)
 val TextSecondary = Color(0xFF7A8EAF)
-val TextMuted     = Color(0xFF768BAC)
-val TextDim       = Color(0xFF6F87B2)
+val TextMuted     = Color(0xFF95A6BF)
+val TextDim       = Color(0xFF7087B2)
 
 // ── Accent ────────────────────────────────────────────────────────────────
 val AccentBlue    = Color(0xFF3D84F5)
