@@ -61,4 +61,39 @@ class CsvFormatterTest {
         val csv = CsvFormatter.toCsv(listOf(reading))
         assertEquals("timestamp_utc,dbm,network_type,operator\n1970-01-01T00:00:00Z,-85,LTE,Vivo 📶 Brasil\n", csv)
     }
+
+    @Test
+    fun `toCsv neutralizes operator names starting with an equals sign`() {
+        val reading = SignalReadingEntity(timestampMs = 0L, dbm = -85, networkType = "LTE", operator = "=SUM(A1:A9)")
+        val csv = CsvFormatter.toCsv(listOf(reading))
+        assertEquals("timestamp_utc,dbm,network_type,operator\n1970-01-01T00:00:00Z,-85,LTE,'=SUM(A1:A9)\n", csv)
+    }
+
+    @Test
+    fun `toCsv neutralizes operator names starting with a plus sign`() {
+        val reading = SignalReadingEntity(timestampMs = 0L, dbm = -85, networkType = "LTE", operator = "+1234")
+        val csv = CsvFormatter.toCsv(listOf(reading))
+        assertEquals("timestamp_utc,dbm,network_type,operator\n1970-01-01T00:00:00Z,-85,LTE,'+1234\n", csv)
+    }
+
+    @Test
+    fun `toCsv neutralizes operator names starting with a minus sign`() {
+        val reading = SignalReadingEntity(timestampMs = 0L, dbm = -85, networkType = "LTE", operator = "-2+3")
+        val csv = CsvFormatter.toCsv(listOf(reading))
+        assertEquals("timestamp_utc,dbm,network_type,operator\n1970-01-01T00:00:00Z,-85,LTE,'-2+3\n", csv)
+    }
+
+    @Test
+    fun `toCsv neutralizes operator names starting with an at sign`() {
+        val reading = SignalReadingEntity(timestampMs = 0L, dbm = -85, networkType = "LTE", operator = "@SUM(A1)")
+        val csv = CsvFormatter.toCsv(listOf(reading))
+        assertEquals("timestamp_utc,dbm,network_type,operator\n1970-01-01T00:00:00Z,-85,LTE,'@SUM(A1)\n", csv)
+    }
+
+    @Test
+    fun `toCsv applies formula-injection prefix before comma quoting`() {
+        val reading = SignalReadingEntity(timestampMs = 0L, dbm = -85, networkType = "LTE", operator = "=A1,A2")
+        val csv = CsvFormatter.toCsv(listOf(reading))
+        assertEquals("timestamp_utc,dbm,network_type,operator\n1970-01-01T00:00:00Z,-85,LTE,\"'=A1,A2\"\n", csv)
+    }
 }

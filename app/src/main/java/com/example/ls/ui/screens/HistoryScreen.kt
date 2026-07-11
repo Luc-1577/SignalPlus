@@ -113,8 +113,9 @@ fun HistoryScreen(
                     Spacer(Modifier.width(4.dp))
                     SignalChart(points, minDbm, maxDbm, Modifier.weight(1f))
                 }
+                val spanMs = if (points.isNotEmpty()) points.last().timestampMs - points.first().timestampMs else 0L
                 Text(
-                    "${points.size} leituras nos últimos ${formatIntervalLabel(points.size * pollIntervalMs)}",
+                    "${points.size} leituras nos últimos ${formatIntervalLabel(spanMs)}",
                     fontSize = 10.sp,
                     color = TextDim,
                     modifier = Modifier.padding(top = 8.dp),

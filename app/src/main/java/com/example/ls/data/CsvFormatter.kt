@@ -19,8 +19,13 @@ object CsvFormatter {
         }
     }
 
-    private fun escape(field: String): String =
-        if (field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r'))
-            "\"${field.replace("\"", "\"\"")}\""
-        else field
+    private fun escape(field: String): String {
+        // Prefix with a single quote if the field could be interpreted as a formula by
+        // spreadsheet apps (Excel/Sheets) when the CSV is opened — CSV/formula injection
+        // mitigation. The leading quote forces the cell to be treated as text.
+        val safe = if (field.isNotEmpty() && field[0] in "=+-@") "'$field" else field
+        return if (safe.contains(',') || safe.contains('"') || safe.contains('\n') || safe.contains('\r'))
+            "\"${safe.replace("\"", "\"\"")}\""
+        else safe
+    }
 }
