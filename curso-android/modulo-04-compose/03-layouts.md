@@ -362,7 +362,7 @@ Crie um composable `PerfilCard(nome: String, cargo: String, avatarUrl: String?)`
 Dado `Map<String, String>` de métricas, crie uma grade de 2 colunas onde cada
 célula é um card com label (pequeno, cinza) e valor (grande, colorido).
 
-### Desafio 3 — Layout do SignalMeter
+### Desafio 3 — Layout do Signal+
 Recrie o layout da aba "Sinal" do projeto:
 1. Gauge centralizado no topo
 2. Nome da operadora abaixo do gauge

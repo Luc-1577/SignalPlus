@@ -9,7 +9,7 @@
 1. **File → New → New Project**
 2. Selecione **Empty Activity**
 3. Configure:
-   - **Name:** SignalMeter
+   - **Name:** Signal+
    - **Package name:** com.example.ls
    - **Save location:** à sua escolha
    - **Language:** Kotlin
@@ -26,7 +26,7 @@ O Gradle é o sistema de build do Android. Tem dois arquivos principais:
 
 ```kotlin
 // O nome que aparece no Android Studio
-rootProject.name = "SignalMeter"
+rootProject.name = "Signal+"
 
 // Diz ao Gradle onde buscar as bibliotecas
 dependencyResolutionManagement {
@@ -222,7 +222,7 @@ pode ser removida.
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SignalMeter">
+        android:theme="@style/Theme.SignalPlus">
 
         <activity
             android:name=".MainActivity"
@@ -308,7 +308,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.example.ls.ui.screens.MainScreen
-import com.example.ls.ui.theme.SignalMeterTheme
+import com.example.ls.ui.theme.SignalPlusTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -319,7 +319,7 @@ class MainActivity : ComponentActivity() {
 
         // Define o conteúdo Compose
         setContent {
-            SignalMeterTheme {
+            SignalPlusTheme {
                 MainScreen()
             }
         }

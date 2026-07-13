@@ -164,9 +164,9 @@ private val AppTypography = Typography(
     labelSmall  = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Medium,   letterSpacing = 1.sp),
 )
 
-// ── SignalMeterTheme ──────────────────────────────────────────
+// ── SignalPlusTheme ──────────────────────────────────────────
 @Composable
-fun SignalMeterTheme(content: @Composable () -> Unit) {
+fun SignalPlusTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DarkColorScheme,
         typography  = AppTypography,

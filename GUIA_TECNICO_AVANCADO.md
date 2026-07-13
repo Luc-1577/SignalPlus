@@ -1,6 +1,6 @@
-# Guia Técnico Avançado — SignalMeter
+# Guia Técnico Avançado — Signal+
 
-> Documentação didática do projeto Android **SignalMeter**: um medidor de sinal de rádio móvel que lê dados brutos do modem, converte parâmetros 3GPP e os apresenta em uma interface Compose moderna.
+> Documentação didática do projeto Android **Signal+**: um medidor de sinal de rádio móvel que lê dados brutos do modem, converte parâmetros 3GPP e os apresenta em uma interface Compose moderna.
 
 ---
 
@@ -26,7 +26,7 @@
 
 ### O que o app faz
 
-SignalMeter lê em tempo real os dados do modem de rádio do dispositivo Android e apresenta ao usuário:
+Signal+ lê em tempo real os dados do modem de rádio do dispositivo Android e apresenta ao usuário:
 
 - **Potência do sinal** da célula à qual está conectado, em dBm, com gauge animado.
 - **Identificadores de rádio**: TAC/LAC, eNB/gNB, Cell ID, PCI/PSC/BSIC, ARFCN e derivados.
@@ -892,7 +892,7 @@ Mapear as cores semânticas da paleta às roles do Material3 permite que compone
 ```
 1. Android cria MainActivity
    └─ enableEdgeToEdge()               → remove barras de sistema do layout
-   └─ setContent { SignalMeterTheme }  → inicializa Compose runtime
+   └─ setContent { SignalPlusTheme }  → inicializa Compose runtime
 
 2. Compose compõe MainScreen()
    └─ viewModel() cria SignalViewModel (singleton no escopo da Activity)

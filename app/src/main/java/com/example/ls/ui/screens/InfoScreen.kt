@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ls.data.*
 import com.example.ls.ui.components.NetworkBadge
+import com.example.ls.ui.components.Wordmark
 import com.example.ls.ui.components.formatIntervalLabel
 import com.example.ls.ui.theme.*
 
@@ -44,7 +45,7 @@ private fun InfoHeader() {
             Icon(Icons.Default.SignalCellularAlt, null, tint = AccentBlue, modifier = Modifier.size(28.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text("Signal Meter", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+            Wordmark(fontSize = 18.sp, markSize = 15.dp)
             Text("v1.0 — medição precisa de sinal", fontSize = 12.sp, color = TextMuted)
             Spacer(Modifier.height(6.dp))
             // showLabel = false: só "2G"/"3G"/"4G"/"5G", sem o rótulo completo

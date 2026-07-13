@@ -7,12 +7,12 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.example.ls.ui.screens.MainScreen
-import com.example.ls.ui.theme.SignalMeterTheme
+import com.example.ls.ui.theme.SignalPlusTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // O app é dark-only (SignalMeterTheme sempre usa darkColorScheme, sem
+        // O app é dark-only (SignalPlusTheme sempre usa darkColorScheme, sem
         // isSystemInDarkTheme()). O default de enableEdgeToEdge() (SystemBarStyle.auto)
         // decide a cor dos ícones da status/navigation bar com base no tema do SISTEMA,
         // não no tema do app — em um aparelho com sistema em modo claro isso resultaria
@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         setContent {
-            SignalMeterTheme {
+            SignalPlusTheme {
                 MainScreen()
             }
         }

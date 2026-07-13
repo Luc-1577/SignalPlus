@@ -54,9 +54,10 @@ class ExampleInstrumentedTest {
 
     @Test
     fun mainActivity_launchesAndShowsTitle() {
-        // MainActivity must launch without crashing and the top bar title
-        // "Signal Meter" is rendered in every SignalUiState branch (Loading,
-        // PermissionRequired, Success, Error) — see AppTopBar in MainScreen.kt.
-        composeRule.onNodeWithText("Signal Meter").assertExists()
+        // MainActivity must launch without crashing and the top bar wordmark
+        // is rendered in every SignalUiState branch (Loading, PermissionRequired,
+        // Success, Error) — see AppTopBar in MainScreen.kt. The "+" is drawn on a
+        // Canvas (SignalPlusMark), not text, so only "Signal" is a text node.
+        composeRule.onNodeWithText("Signal").assertExists()
     }
 }

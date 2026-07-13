@@ -1,8 +1,8 @@
 <resources>
     <!-- Tema base sem ActionBar — o Compose gerencia toda a UI.
-         Parent é a variante ESCURA (não ".Light") porque SignalMeterTheme (Theme.kt)
+         Parent é a variante ESCURA (não ".Light") porque SignalPlusTheme (Theme.kt)
          usa darkColorScheme() incondicionalmente — o app é dark-only por design.
          Usar a variante Light aqui causava um flash de janela clara/branca no
          cold start, antes do primeiro frame do Compose ser desenhado. -->
-    <style name="Theme.SignalMeter" parent="android:Theme.Material.NoActionBar"/>
+    <style name="Theme.SignalPlus" parent="android:Theme.Material.NoActionBar"/>
 </resources>

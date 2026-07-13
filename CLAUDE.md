@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**SignalMeter** — Android app for RF signal diagnostics on mobile networks (5G NR, LTE, WCDMA, GSM, CDMA). It reads raw modem data via `TelephonyManager`, converts ARFCN values to frequencies using 3GPP standards, and presents live metrics with custom Canvas visualizations.
+**Signal+** — Android app for RF signal diagnostics on mobile networks (5G NR, LTE, WCDMA, GSM, CDMA). It reads raw modem data via `TelephonyManager`, converts ARFCN values to frequencies using 3GPP standards, and presents live metrics with custom Canvas visualizations.
 
 ## Build Commands
 

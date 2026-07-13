@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SignalMeter"
+rootProject.name = "Signal+"
 include(":app")

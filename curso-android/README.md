@@ -1,7 +1,7 @@
 # 📱 Curso Android Moderno — Do Zero ao Sênior
 
 > Aprenda a criar apps Android modernos, bonitos e bem arquitetados usando **Kotlin + Jetpack Compose + MVVM**.
-> Este curso usa o app **SignalMeter** como projeto real de referência.
+> Este curso usa o app **Signal+** como projeto real de referência.
 
 ---
 
@@ -42,7 +42,7 @@ VOCÊ ESTÁ AQUI
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  MÓDULO 05 — Construindo o App Completo                         │
-│  Mão na massa: SignalMeter do zero                              │
+│  Mão na massa: Signal+ do zero                                   │
 │  📄 setup.md · dados.md · repositorio.md                       │
 │  📄 viewmodel.md · telas.md · componentes.md                   │
 └──────────────────────────┬──────────────────────────────────────┘

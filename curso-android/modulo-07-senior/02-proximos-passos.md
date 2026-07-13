@@ -333,8 +333,8 @@ Box(modifier = Modifier.signalGlow(quality.color, 0.7f)) {
 ## Linha do tempo realista
 
 ```
-Mês 1–2   → Completar este curso, fazer o SignalMeter funcionar
-Mês 3–4   → Adicionar Room ao SignalMeter + aprender Hilt
+Mês 1–2   → Completar este curso, fazer o Signal+ funcionar
+Mês 3–4   → Adicionar Room ao Signal+ + aprender Hilt
 Mês 5–6   → Fazer um app próprio do zero (qualquer ideia!)
 Mês 7–9   → Aprender Navigation, Retrofit, testes com MockK
 Mês 10–12 → Contribute para projetos open source, ou freelance
@@ -358,7 +358,7 @@ Ano 2+    → Especialização (Compose animations, performance, arquitetura mod
 
 ## 🎯 Desafio final do curso
 
-**Adicione estas funcionalidades ao SignalMeter:**
+**Adicione estas funcionalidades ao Signal+:**
 
 1. **Persistência** — use Room para salvar o histórico de leituras (não perde ao fechar)
 2. **Configurações** — use DataStore para salvar o intervalo de polling preferido (1s, 2s, 5s)

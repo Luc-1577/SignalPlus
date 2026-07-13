@@ -206,12 +206,7 @@ private fun AppTopBar(state: SignalUiState) {
                     tint = AccentBlue,
                     modifier = Modifier.size(22.dp),
                 )
-                Text(
-                    "Signal Meter",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                )
+                Wordmark(fontSize = 17.sp, markSize = 14.dp)
             }
         },
         actions = {

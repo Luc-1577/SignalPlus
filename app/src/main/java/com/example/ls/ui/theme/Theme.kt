@@ -48,7 +48,7 @@ private val AppTypography = Typography(
 )
 
 @Composable
-fun SignalMeterTheme(content: @Composable () -> Unit) {
+fun SignalPlusTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DarkColorScheme,
         typography  = AppTypography,

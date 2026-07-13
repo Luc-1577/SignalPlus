@@ -265,7 +265,7 @@ fun TelaPrincipal(vm: SignalViewModel = viewModel()) {
         containerColor = Color(0xFF060810),
         topBar = {
             TopAppBar(
-                title = { Text("Signal Meter") },
+                title = { Text("Signal+") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF0B0F1C)
                 ),

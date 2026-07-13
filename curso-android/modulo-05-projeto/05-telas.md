@@ -156,7 +156,7 @@ private fun AppTopBar(state: SignalUiState) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Icon(Icons.Default.SignalCellularAlt, null, tint = AccentBlue)
-                Text("Signal Meter", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text("Signal+", fontSize = 17.sp, fontWeight = FontWeight.Bold)
             }
         },
         actions = {

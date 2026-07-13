@@ -75,7 +75,7 @@ O MVVM divide o código em três camadas:
 
 ---
 
-## MVVM no SignalMeter
+## MVVM no Signal+
 
 ### A View — `MainScreen.kt`
 
