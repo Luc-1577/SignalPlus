@@ -2,8 +2,10 @@ package com.example.ls.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -41,11 +43,15 @@ private fun InfoHeader() {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(AccentBlue.copy(alpha = 0.15f)).border(1.dp, AccentBlue.copy(alpha = 0.3f), RoundedCornerShape(14.dp))) {
             Icon(Icons.Default.SignalCellularAlt, null, tint = AccentBlue, modifier = Modifier.size(28.dp))
         }
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text("Signal Meter", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
             Text("v1.0 — medição precisa de sinal", fontSize = 12.sp, color = TextMuted)
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Sem largura fixa disponível pros 4 selos (2G/3G/4G/5G) nem sempre
+            // caberem lado a lado (ex.: "WCDMA" é o rótulo mais longo) — sem o
+            // scroll, o texto do último selo quebrava linha dentro do próprio
+            // pill em telas estreitas, em vez de simplesmente rolar.
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 NetworkBadge(NetworkType.GSM_2G); NetworkBadge(NetworkType.WCDMA)
                 NetworkBadge(NetworkType.LTE);    NetworkBadge(NetworkType.NR_5G)
             }
