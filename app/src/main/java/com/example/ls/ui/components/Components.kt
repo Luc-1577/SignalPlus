@@ -31,7 +31,7 @@ fun formatIntervalLabel(ms: Long): String = when {
 }
 
 @Composable
-fun NetworkBadge(type: NetworkType, modifier: Modifier = Modifier) {
+fun NetworkBadge(type: NetworkType, modifier: Modifier = Modifier, showLabel: Boolean = true) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -42,7 +42,9 @@ fun NetworkBadge(type: NetworkType, modifier: Modifier = Modifier) {
             .padding(horizontal = 12.dp, vertical = 5.dp),
     ) {
         Text(type.generation, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = type.badgeColor, letterSpacing = 0.5.sp)
-        Text(type.label,      fontSize = 11.sp, fontWeight = FontWeight.Medium,    color = type.badgeColor.copy(alpha = 0.85f))
+        if (showLabel) {
+            Text(type.label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = type.badgeColor.copy(alpha = 0.85f))
+        }
     }
 }
 

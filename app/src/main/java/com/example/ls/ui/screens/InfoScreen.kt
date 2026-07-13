@@ -47,13 +47,14 @@ private fun InfoHeader() {
             Text("Signal Meter", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
             Text("v1.0 — medição precisa de sinal", fontSize = 12.sp, color = TextMuted)
             Spacer(Modifier.height(6.dp))
-            // Sem largura fixa disponível pros 4 selos (2G/3G/4G/5G) nem sempre
-            // caberem lado a lado (ex.: "WCDMA" é o rótulo mais longo) — sem o
-            // scroll, o texto do último selo quebrava linha dentro do próprio
-            // pill em telas estreitas, em vez de simplesmente rolar.
+            // showLabel = false: só "2G"/"3G"/"4G"/"5G", sem o rótulo completo
+            // (GSM/WCDMA/LTE/NR) — os 4 selos cabem confortavelmente lado a
+            // lado assim. horizontalScroll fica como rede de segurança para
+            // configurações de fonte grande (acessibilidade), sem efeito
+            // visual quando os selos já cabem.
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                NetworkBadge(NetworkType.GSM_2G); NetworkBadge(NetworkType.WCDMA)
-                NetworkBadge(NetworkType.LTE);    NetworkBadge(NetworkType.NR_5G)
+                NetworkBadge(NetworkType.GSM_2G, showLabel = false); NetworkBadge(NetworkType.WCDMA, showLabel = false)
+                NetworkBadge(NetworkType.LTE,    showLabel = false); NetworkBadge(NetworkType.NR_5G, showLabel = false)
             }
         }
     }
