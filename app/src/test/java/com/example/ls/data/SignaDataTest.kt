@@ -7,6 +7,29 @@ class SignaDataTest {
 
     private val DELTA = 0.0001f
 
+    // ── AUTOMATIC_SUBSCRIPTION_ID ────────────────────────────────────────────
+
+    @Test
+    fun `AUTOMATIC_SUBSCRIPTION_ID matches SubscriptionManager INVALID_SUBSCRIPTION_ID`() {
+        assertEquals(-1, AUTOMATIC_SUBSCRIPTION_ID)
+    }
+
+    // ── NetworkType.hasDedicatedDbmMetric ───────────────────────────────────
+
+    @Test
+    fun `hasDedicatedDbmMetric is true only for LTE and NR_5G`() {
+        assertEquals(true, NetworkType.LTE.hasDedicatedDbmMetric)
+        assertEquals(true, NetworkType.NR_5G.hasDedicatedDbmMetric)
+        // WCDMA/HSPA/GSM_2G/CDMA: SignalRepository's parsers only put "ASU"
+        // (and, for CDMA, "EVDO dBm" — a different carrier) in extraMetrics,
+        // never a dedicated dBm-named entry for the serving cell itself.
+        assertEquals(false, NetworkType.WCDMA.hasDedicatedDbmMetric)
+        assertEquals(false, NetworkType.HSPA.hasDedicatedDbmMetric)
+        assertEquals(false, NetworkType.GSM_2G.hasDedicatedDbmMetric)
+        assertEquals(false, NetworkType.CDMA.hasDedicatedDbmMetric)
+        assertEquals(false, NetworkType.UNKNOWN.hasDedicatedDbmMetric)
+    }
+
     // ── signalQuality: sentinels ────────────────────────────────────────────
 
     @Test

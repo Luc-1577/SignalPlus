@@ -4,8 +4,10 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material3.*
@@ -15,8 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ls.data.*
@@ -28,6 +32,13 @@ fun formatIntervalLabel(ms: Long): String = when {
     ms < 1000L      -> "${ms}ms"
     ms % 1000L == 0L -> (ms / 1000L).let { s -> if (s == 1L) "1 segundo" else "$s segundos" }
     else            -> "%.1fs".format(Locale.US, ms / 1000.0)
+}
+
+/** Formata um tamanho em bytes de forma legível ("114 B", "2.3 KB", "1.1 MB"). */
+fun formatFileSize(bytes: Long): String = when {
+    bytes < 1024L        -> "$bytes B"
+    bytes < 1024L * 1024 -> "%.1f KB".format(Locale.US, bytes / 1024.0)
+    else                 -> "%.1f MB".format(Locale.US, bytes / (1024.0 * 1024.0))
 }
 
 @Composable
@@ -114,4 +125,119 @@ fun CellRow(cell: CellSignalData, modifier: Modifier = Modifier) {
 @Composable
 fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     Text(title.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextMuted, letterSpacing = 1.8.sp, modifier = modifier.padding(bottom = 10.dp))
+}
+
+/** Cartão padrão usado por cada seção de Configurações/Exportações — mesmo
+ *  fundo/borda/raio repetidos em toda seção daquelas telas. */
+@Composable
+fun SettingsCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(BgCard)
+            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        content = content,
+    )
+}
+
+/** Fileira de opções em formato de "chip" com uma selecionada por vez — usada
+ *  pelos seletores de SIM, intervalo de leitura e retenção de histórico em
+ *  SettingsScreen, que tinham o mesmo Box/clip/background/border/clickable
+ *  repetido 3x quase idêntico antes desta extração. */
+@Composable
+fun <T> SelectableChipRow(
+    options: List<Pair<T, String>>,
+    isSelected: (T) -> Boolean,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    verticalPadding: Dp = 12.dp,
+    fontSize: TextUnit = 14.sp,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier.fillMaxWidth()) {
+        options.forEach { (value, label) ->
+            val selected = isSelected(value)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (selected) AccentBlue else BgCardAlt)
+                    .border(1.dp, if (selected) AccentBlue else BorderSubtle, RoundedCornerShape(12.dp))
+                    .clickable { onSelect(value) }
+                    .padding(vertical = verticalPadding),
+            ) {
+                Text(label, fontSize = fontSize, fontWeight = FontWeight.Bold, color = if (selected) TextPrimary else TextSecondary)
+            }
+        }
+    }
+}
+
+/** Campo de texto numérico + botão "Aplicar" — usado pelo intervalo de leitura
+ *  personalizado e pela retenção de histórico personalizada em SettingsScreen,
+ *  que tinham o mesmo OutlinedTextField+Button repetido antes desta extração.
+ *  O clamping/coerção de valor fica por conta de [onApply] (cada chamador tem
+ *  seu próprio piso/sentinela), não deste composable. */
+@Composable
+fun CustomNumericField(
+    text: String,
+    onTextChange: (String) -> Unit,
+    label: String,
+    onApply: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    maxDigits: Int = 6,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { onTextChange(it.filter(Char::isDigit).take(maxDigits)) },
+            label = { Text(label) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                focusedBorderColor = AccentBlue,
+                unfocusedBorderColor = BorderSubtle,
+                focusedLabelColor = AccentBlue,
+                unfocusedLabelColor = TextMuted,
+            ),
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(10.dp))
+        Button(
+            onClick = { text.toLongOrNull()?.let(onApply) },
+            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+        ) { Text("Aplicar") }
+    }
+}
+
+/** Diálogo padrão de confirmação para ações destrutivas irreversíveis (apagar
+ *  histórico, estimativas de torre, ou um export individual). */
+@Composable
+fun DestructiveConfirmDialog(
+    title: String,
+    text: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    extraContent: (@Composable ColumnScope.() -> Unit)? = null,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                Text(text)
+                extraContent?.invoke(this)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = QualityVeryPoor),
+            ) { Text("Apagar") }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text("Cancelar") }
+        },
+    )
 }

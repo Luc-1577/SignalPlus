@@ -3,7 +3,7 @@ package com.example.ls
 import android.Manifest
 import android.os.Build
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -56,8 +56,12 @@ class ExampleInstrumentedTest {
     fun mainActivity_launchesAndShowsTitle() {
         // MainActivity must launch without crashing and the top bar wordmark
         // is rendered in every SignalUiState branch (Loading, PermissionRequired,
-        // Success, Error) — see AppTopBar in MainScreen.kt. The "+" is drawn on a
-        // Canvas (SignalPlusMark), not text, so only "Signal" is a text node.
-        composeRule.onNodeWithText("Signal").assertExists()
+        // Success, Error) — see AppTopBar in MainScreen.kt. Wordmark's wrapping
+        // Row uses Modifier.clearAndSetSemantics { contentDescription = "Signal+" }
+        // (accessibility fix: TalkBack reads the full name, not just "Signal") —
+        // that collapses the merged semantics tree to one node, so a text-based
+        // lookup like onNodeWithText("Signal") only matches the unmerged tree and
+        // fails here. Content-description is the stable, intended public surface.
+        composeRule.onNodeWithContentDescription("Signal+").assertExists()
     }
 }

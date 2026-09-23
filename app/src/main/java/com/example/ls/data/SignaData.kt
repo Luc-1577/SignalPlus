@@ -1,7 +1,23 @@
 package com.example.ls.data
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import com.example.ls.ui.theme.*
+
+// ── SIM / assinatura ─────────────────────────────────────────────────────
+
+/** "Usa o TelephonyManager padrão, sem override de assinatura" — mesmo valor de
+ *  android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID, duplicado aqui
+ *  para este arquivo continuar sem dependência de Android. */
+const val AUTOMATIC_SUBSCRIPTION_ID = -1
+
+/** Um chip (SIM) ativo no aparelho, para o seletor em Configurações. */
+@Immutable
+data class SimOption(
+    val subscriptionId: Int,
+    val slotIndex: Int,
+    val displayName: String,
+)
 
 // ── Enums ──────────────────────────────────────────────────────────────────
 
@@ -9,13 +25,24 @@ enum class NetworkType(
     val label: String,
     val generation: String,
     val badgeColor: Color,
+    /** true quando SignalRepository já inclui, em extraMetrics, um metric
+     *  dedicado e nomeado que representa o dBm daquela tecnologia (ex.: "RSRP"
+     *  em LTE, "SS-RSRP" em NR) — nesse caso a UI de métricas não precisa
+     *  sintetizar um "dBm" genérico à parte, já teria um duplicado. WCDMA/
+     *  HSPA/GSM_2G/CDMA ficam de fora de propósito: seus parsers só colocam
+     *  "ASU" (e, no caso do CDMA, "EVDO dBm", que é outra portadora) em
+     *  extraMetrics — nenhum valor de dBm nomeado. Antes desta propriedade
+     *  existir, uma lista hardcoded equivalente em MainScreen.kt incluía
+     *  WCDMA/HSPA/GSM_2G por engano, fazendo o dBm sumir da UI de métricas
+     *  pra essas tecnologias. */
+    val hasDedicatedDbmMetric: Boolean = false,
 ) {
     GSM_2G ("GSM",   "2G", Net2G),
     CDMA   ("CDMA",  "2G", Net2G),
     WCDMA  ("WCDMA", "3G", Net3G),
     HSPA   ("HSPA+", "3G", Net3G),
-    LTE    ("LTE",   "4G", Net4G),
-    NR_5G  ("NR",    "5G", Net5G),
+    LTE    ("LTE",   "4G", Net4G, hasDedicatedDbmMetric = true),
+    NR_5G  ("NR",    "5G", Net5G, hasDedicatedDbmMetric = true),
     UNKNOWN("?",     "?",  QualityNone),
 }
 
@@ -55,6 +82,7 @@ enum class SignalQuality(
  * @param arfcnLabel     "EARFCN" (LTE), "NRARFCN" (5G), "UARFCN" (3G), "ARFCN" (2G).
  * @param pciLabel       "PCI" (LTE/5G), "PSC" (WCDMA), "BSIC" (GSM), "SID" (CDMA).
  */
+@Immutable
 data class CellNetworkInfo(
     val tac           : Int?    = null,
     val enbId         : Long?   = null,
@@ -87,6 +115,16 @@ data class CellNetworkInfo(
  * @param extraMetrics   Métricas de qualidade: RSRP, RSRQ, CQI, SS-SINR...
  * @param netInfo        Identificadores: TAC, eNB, Cell ID, PCI, ARFCN, FDL, FUL, BW, TA.
  */
+// @Immutable: extraMetrics/netInfo nunca são mutados depois de construídos
+// (extraMetrics vem de um mutableMapOf local que só é preenchido ANTES de
+// entrar no construtor, em SignalRepositry.kt — nenhuma referência externa
+// sobrevive pra mutá-lo depois). Sem isso, o compilador do Compose trata
+// Map<String,String> como potencialmente instável por padrão, o que
+// normalmente impede pular recomposição por igualdade de referência (o
+// strong skipping mode do compilador já mitiga a maior parte na prática via
+// equals() estrutural, mas a anotação é o jeito direto/documentado de dar
+// essa garantia).
+@Immutable
 data class CellSignalData(
     val networkType  : NetworkType,
     val dbm          : Int,
@@ -100,6 +138,7 @@ data class CellSignalData(
 
 // ── UI State ───────────────────────────────────────────────────────────────
 
+@Immutable
 sealed class SignalUiState {
     object Loading            : SignalUiState()
     object PermissionRequired : SignalUiState()

@@ -1,17 +1,13 @@
-# Mantém data classes do pacote data (não obfusca)
--keep class com.example.ls.data.** { *; }
-
-# TelephonyManager e classes de célula do Android SDK
--keep class android.telephony.** { *; }
+# android.telephony.** e androidx.compose.**/androidx.lifecycle.** não têm
+# regras -keep aqui de propósito: são classes de plataforma/AARs que já
+# publicam suas próprias consumer-rules.pro (Compose/Lifecycle) ou nunca
+# entram no dex do app (android.telephony é API de plataforma) — um -keep
+# manual por cima delas só anula o shrink/ofuscação do R8 na maior fatia do
+# APK, contrariando o isMinifyEnabled=true do release.
 
 # Metadados do Kotlin (reflexão)
 -keep class kotlin.Metadata { *; }
 -dontwarn kotlin.**
-
-# Compose e Lifecycle
--keep class androidx.compose.** { *; }
--keep class androidx.lifecycle.** { *; }
--dontwarn androidx.compose.**
 
 # Stack traces legíveis nos relatórios de crash
 -keepattributes SourceFile,LineNumberTable

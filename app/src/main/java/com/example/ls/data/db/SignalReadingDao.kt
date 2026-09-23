@@ -15,4 +15,8 @@ interface SignalReadingDao {
 
     @Query("DELETE FROM signal_readings")
     suspend fun clearAll()
+
+    /** Poda de retenção — ver [com.example.ls.data.SignalReadingRepository.pruneOlderThan]. */
+    @Query("DELETE FROM signal_readings WHERE timestampMs < :cutoffMs")
+    suspend fun deleteOlderThan(cutoffMs: Long)
 }

@@ -20,6 +20,12 @@ import com.example.ls.data.*
 import com.example.ls.ui.theme.*
 import kotlin.math.*
 
+// Ticks de escala do gauge — hoisted fora do Canvas: o bloco de desenho roda a
+// cada frame enquanto a animação de glow (infinita) estiver ativa, e um
+// listOf(...) novo por frame só pra iterar posições estáticas era alocação/GC
+// evitável num hot path perpétuo enquanto a aba Sinal ficar aberta.
+private val GAUGE_TICK_FRACS = floatArrayOf(0f, 0.25f, 0.5f, 0.75f, 1f)
+
 @Composable
 fun SignalGauge(cell: CellSignalData?, modifier: Modifier = Modifier) {
     val dbm      = cell?.dbm ?: 0
@@ -101,7 +107,7 @@ fun SignalGauge(cell: CellSignalData?, modifier: Modifier = Modifier) {
                 drawCircle(Color.White.copy(alpha = 0.6f), trackW * 0.22f, tip)
             }
             // 6. Ticks de escala
-            listOf(0f, 0.25f, 0.5f, 0.75f, 1f).forEach { frac ->
+            GAUGE_TICK_FRACS.forEach { frac ->
                 val a = Math.toRadians((startAngle + totalSweep * frac).toDouble())
                 drawLine(
                     color = BorderDefault,

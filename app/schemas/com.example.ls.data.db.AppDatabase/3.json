@@ -1,0 +1,160 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "c7b28ae72e8c4366044d600d3f6e9861",
+    "entities": [
+      {
+        "tableName": "signal_readings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestampMs` INTEGER NOT NULL, `dbm` INTEGER NOT NULL, `networkType` TEXT NOT NULL, `operator` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestampMs",
+            "columnName": "timestampMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dbm",
+            "columnName": "dbm",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "networkType",
+            "columnName": "networkType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "operator",
+            "columnName": "operator",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_signal_readings_timestampMs",
+            "unique": false,
+            "columnNames": [
+              "timestampMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_signal_readings_timestampMs` ON `${TABLE_NAME}` (`timestampMs`)"
+          }
+        ]
+      },
+      {
+        "tableName": "tower_positions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`towerKey` TEXT NOT NULL, `networkType` TEXT NOT NULL, `cellId` INTEGER NOT NULL, `pci` INTEGER, `tac` INTEGER, `sumWeightedLat` REAL NOT NULL, `sumWeightedLon` REAL NOT NULL, `sumWeight` REAL NOT NULL, `sampleCount` INTEGER NOT NULL, `farLat1` REAL NOT NULL, `farLon1` REAL NOT NULL, `farLat2` REAL NOT NULL, `farLon2` REAL NOT NULL, `lastUpdatedMs` INTEGER NOT NULL, PRIMARY KEY(`towerKey`))",
+        "fields": [
+          {
+            "fieldPath": "towerKey",
+            "columnName": "towerKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "networkType",
+            "columnName": "networkType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cellId",
+            "columnName": "cellId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pci",
+            "columnName": "pci",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "tac",
+            "columnName": "tac",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sumWeightedLat",
+            "columnName": "sumWeightedLat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sumWeightedLon",
+            "columnName": "sumWeightedLon",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sumWeight",
+            "columnName": "sumWeight",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sampleCount",
+            "columnName": "sampleCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "farLat1",
+            "columnName": "farLat1",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "farLon1",
+            "columnName": "farLon1",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "farLat2",
+            "columnName": "farLat2",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "farLon2",
+            "columnName": "farLon2",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdatedMs",
+            "columnName": "lastUpdatedMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "towerKey"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c7b28ae72e8c4366044d600d3f6e9861')"
+    ]
+  }
+}

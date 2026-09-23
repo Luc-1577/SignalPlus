@@ -13,7 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +43,8 @@ import com.example.ls.ui.AppTab
 import com.example.ls.ui.SignalViewModel
 import com.example.ls.ui.components.*
 import com.example.ls.ui.theme.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -53,6 +54,11 @@ private tailrec fun android.content.Context.findActivity(): Activity? = when (th
     else -> null
 }
 
+/** hasPerms() e hasLocationPerms() eram o mesmo `perms.all { checkSelfPermission... } `
+ *  duas vezes, cada um fechando sobre um array de permissões diferente. */
+private fun android.content.Context.hasAllPermissions(perms: Array<String>): Boolean =
+    perms.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
+
 // ── Tabs ───────────────────────────────────────────────────────────────────
 
 private data class TabItem(val tab: AppTab, val label: String, val icon: ImageVector)
@@ -60,6 +66,7 @@ private data class TabItem(val tab: AppTab, val label: String, val icon: ImageVe
 private val TABS = listOf(
     TabItem(AppTab.SIGNAL, "Sinal", Icons.Default.SignalCellularAlt),
     TabItem(AppTab.HISTORY, "Histórico", Icons.AutoMirrored.Filled.ShowChart),
+    TabItem(AppTab.TOWERS, "Torres", Icons.Default.Explore),
     TabItem(AppTab.INFO, "Info", Icons.Default.Info),
     TabItem(AppTab.SETTINGS, "Config", Icons.Default.Settings),
 )
@@ -72,10 +79,29 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     val currentTab by vm.currentTab.collectAsStateWithLifecycle()
     val pollIntervalMs by vm.pollIntervalMs.collectAsStateWithLifecycle()
+    val availableSims by vm.availableSims.collectAsStateWithLifecycle()
+    val selectedSubscriptionId by vm.selectedSubscriptionId.collectAsStateWithLifecycle()
+    val towerTriangulationEnabled by vm.towerTriangulationEnabled.collectAsStateWithLifecycle()
+    val historyRetentionDays by vm.historyRetentionDays.collectAsStateWithLifecycle()
+    val exportError by vm.exportError.collectAsStateWithLifecycle()
+    val clearEstimatesError by vm.clearEstimatesError.collectAsStateWithLifecycle()
+    val currentLocation by vm.currentLocation.collectAsStateWithLifecycle()
+    val towerEstimatesDetailed by vm.towerEstimatesDetailed.collectAsStateWithLifecycle()
 
     val perms = remember {
         buildList {
             add(Manifest.permission.READ_PHONE_STATE)
+            // Pedida no pacote inicial só a partir da API 28, que é quando
+            // getAllCellInfo()/requestCellInfoUpdate() passam a exigir
+            // localização — abaixo disso a leitura de sinal (a feature
+            // central do app) não depende de localização nenhuma. A
+            // triangulação de torres (opt-in, desligada por padrão) também
+            // precisa de localização em QUALQUER versão, mas como é uma
+            // feature secundária — não a razão de ninguém abrir o app —,
+            // ela é pedida em contexto, só quando o usuário liga o toggle
+            // em Configurações (ver locationPermsLauncher abaixo), seguindo
+            // a prática recomendada pela própria documentação do Android
+            // (pedir no momento de uso, não empacotado no início).
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 add(Manifest.permission.ACCESS_FINE_LOCATION)
                 add(Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -83,26 +109,83 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
         }.toTypedArray()
     }
 
-    fun hasPerms() = perms.all {
-        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+    val locationPerms = remember {
+        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     }
+    fun hasLocationPerms() = context.hasAllPermissions(locationPerms)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     // Checa por permissão: só é conclusivo depois de já termos pedido pelo menos
     // uma vez (antes da primeira solicitação o sistema também retorna false para
-    // toda permissão nunca pedida). Se QUALQUER permissão ainda faltando não pode
-    // mais mostrar rationale, ela foi negada permanentemente — pedir de novo não
-    // adianta, só dá pra resolver via Configurações do sistema. Checar por
-    // permissão (em vez de `.any` sobre o grupo inteiro) evita classificar errado
-    // um estado misto (ex: localização negada para sempre, telefone só negada uma vez).
-    fun hasAnyPermanentlyDenied(): Boolean {
+    // toda permissão nunca pedida). Se QUALQUER permissão em [permsToCheck] não
+    // pode mais mostrar rationale, ela foi negada permanentemente — pedir de novo
+    // não adianta, só dá pra resolver via Configurações do sistema. Aceita o
+    // grupo a checar (não só `perms`, o fixo do fluxo principal) porque o fluxo
+    // secundário de localização da triangulação (locationPermsLauncher abaixo)
+    // precisa da mesma checagem sobre `locationPerms`, senão relança o pedido pra
+    // sempre mesmo após negação permanente, sem nenhum jeito de recuperar o
+    // toggle a não ser descobrir sozinho o caminho até as Configurações do app.
+    fun hasAnyPermanentlyDenied(permsToCheck: Array<String> = perms): Boolean {
         val activity = context.findActivity() ?: return false
-        return perms.any { perm ->
+        return permsToCheck.any { perm ->
             ContextCompat.checkSelfPermission(context, perm) != PackageManager.PERMISSION_GRANTED &&
                 !ActivityCompat.shouldShowRequestPermissionRationale(activity, perm)
         }
     }
 
+    fun openAppSettings() {
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.fromParts("package", context.packageName, null))
+        )
+    }
+
+    val locationPermsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        // Reavalia via hasLocationPerms() (exige as DUAS) em vez de confiar no
+        // mapa `results` do callback — LocationTracker.start() só escolhe
+        // GPS_PROVIDER (que exige FINE) quando o GPS do sistema está ligado, e
+        // cai pra NETWORK_PROVIDER senão; conceder só COARSE deixaria o toggle
+        // "ligado" permanentemente sem nunca funcionar de fato. Checar as duas
+        // aqui mantém consistência com o gate usado antes de abrir o launcher.
+        if (hasLocationPerms()) {
+            vm.setTowerTriangulationEnabled(true)
+        } else {
+            // Diferente do fluxo principal (que usa PermissionRequired, uma tela
+            // cheia bloqueante), a triangulação é opt-in e secundária — bloquear
+            // o app inteiro por causa dela seria desproporcional. Um snackbar
+            // basta pra explicar por que o switch não ligou — mas se a negação
+            // foi permanente, relançar esse mesmo launcher da próxima vez que o
+            // usuário tentar ligar o toggle não faz nada (o sistema rejeita em
+            // silêncio), deixando o switch parecendo quebrado pra sempre sem essa
+            // distinção; a ação do Snackbar dá um caminho de volta.
+            coroutineScope.launch {
+                if (hasAnyPermanentlyDenied(locationPerms)) {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "Permissão de localização negada permanentemente.",
+                        actionLabel = "Configurações",
+                    )
+                    if (result == SnackbarResult.ActionPerformed) openAppSettings()
+                } else {
+                    snackbarHostState.showSnackbar("Permissão de localização negada — triangulação de torres não foi ativada.")
+                }
+            }
+        }
+    }
+
+    fun hasPerms() = context.hasAllPermissions(perms)
+
     var permanentlyDenied by remember { mutableStateOf(false) }
+    // Diferencia o primeiríssimo ON_START (onde ainda não pedimos nada) dos
+    // seguintes — ver o comentário dentro do LifecycleStartEffect abaixo.
+    var hasRequestedInitialPermission by remember { mutableStateOf(false) }
+    // Cancela um check de revogação anterior ainda em voo antes de lançar outro —
+    // sem isso, alternar entre background/foreground rapidamente empilha várias
+    // checagens sobrepostas, cada uma podendo desligar a triangulação e mostrar
+    // seu próprio Snackbar (Snackbars duplicados).
+    var revocationCheckJob by remember { mutableStateOf<Job?>(null) }
 
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -116,20 +199,71 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
         }
     }
 
-    // Pede a permissão automaticamente só na primeira entrada na tela — depois
-    // disso, cabe ao usuário tentar de novo pelo botão da PermissionScreen.
-    LaunchedEffect(Unit) {
-        if (hasPerms()) vm.startPolling() else launcher.launch(perms)
+    // Amarrado ao ciclo de vida (não à composição): retoma o polling quando o
+    // app volta do background (ON_START) SE a permissão já estiver concedida.
+    // Pausa em ON_STOP, em vez de só parar quando a Activity inteira é
+    // destruída. Também é quem faz o pedido inicial de permissão — não um
+    // LaunchedEffect(Unit) separado: os dois efeitos podiam dar zoom um no
+    // outro no cold start (LifecycleStartEffect rodando ANTES do diálogo real
+    // do sistema, disparado pelo outro efeito, sequer aparecer), fazendo
+    // hasAnyPermanentlyDenied() avaliar `true` num app recém-instalado — ela
+    // não distingue "nunca pedido" de "negado pra sempre"
+    // (shouldShowRequestPermissionRationale() devolve false pros dois casos).
+    // Ter um único efeito cuidando de tudo elimina essa corrida.
+    LifecycleStartEffect(Unit) {
+        when {
+            hasPerms() -> {
+                permanentlyDenied = false
+                vm.startPolling()
+            }
+            !hasRequestedInitialPermission -> launcher.launch(perms)
+            else -> {
+                // Sem isso, revogar telefone/localização pelas Configurações do
+                // sistema enquanto o app está em background deixava a tela
+                // congelada no último SignalUiState.Success (dado velho) pra
+                // sempre — nem startPolling() nem nenhuma transição de estado
+                // rodava nesse caminho de volta ao foreground.
+                permanentlyDenied = hasAnyPermanentlyDenied()
+                vm.onPermissionDenied()
+            }
+        }
+        hasRequestedInitialPermission = true
+        vm.setAppInForeground(true)
+        // A permissão de localização pode ter sido revogada pelas Configurações
+        // do sistema enquanto o app estava em background (o app não é notificado
+        // disso em tempo real) — sem essa checagem no retorno, o switch de
+        // triangulação continuaria mostrando "ligado" indefinidamente enquanto a
+        // feature ficava silenciosamente morta (LocationTracker.start() vira
+        // no-op sem a permissão). Usa a leitura fresca (suspend), não
+        // vm.towerTriangulationEnabled.value: logo após um cold start, esse
+        // StateFlow pode ainda estar no valor-semente `false` (a primeira
+        // emissão do DataStore é assíncrona), o que faria esse guard nunca
+        // disparar justo no caso mais comum de checar (app recém-reaberto).
+        revocationCheckJob?.cancel()
+        revocationCheckJob = coroutineScope.launch {
+            if (vm.isTowerTriangulationEnabledPersisted() && !hasLocationPerms()) {
+                vm.setTowerTriangulationEnabled(false)
+                snackbarHostState.showSnackbar("Permissão de localização foi revogada — triangulação de torres desativada.")
+            }
+        }
+        onStopOrDispose { vm.stopPolling(); vm.setAppInForeground(false) }
     }
 
-    // Amarrado ao ciclo de vida (não à composição): retoma o polling quando o
-    // app volta do background (ON_START) SE a permissão já estiver concedida —
-    // não relança o diálogo de permissão a cada retorno (isso já é feito uma
-    // única vez acima). Pausa em ON_STOP, em vez de só parar quando a Activity
-    // inteira é destruída.
-    LifecycleStartEffect(Unit) {
-        if (hasPerms()) vm.startPolling()
-        onStopOrDispose { vm.stopPolling() }
+    // exportReadingsAsCsv()/clearTowerEstimates() já não engolem a falha em
+    // silêncio — sem isso, os botões "Exportar" (Histórico) e "Apagar
+    // estimativas de torre" (Configurações) simplesmente não faziam nada
+    // quando davam erro, indistinguível de um botão quebrado.
+    LaunchedEffect(exportError) {
+        exportError?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.dismissExportError()
+        }
+    }
+    LaunchedEffect(clearEstimatesError) {
+        clearEstimatesError?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.dismissClearEstimatesError()
+        }
     }
 
     Scaffold(
@@ -138,6 +272,7 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
         bottomBar = {
             AppBottomBar(currentTab = currentTab, onTabClick = { vm.selectTab(it) })
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -149,12 +284,7 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
                 is SignalUiState.PermissionRequired -> PermissionScreen(
                     permanentlyDenied = permanentlyDenied,
                     onRequest = { launcher.launch(perms) },
-                    onOpenSettings = {
-                        context.startActivity(
-                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                                .setData(Uri.fromParts("package", context.packageName, null))
-                        )
-                    },
+                    onOpenSettings = { openAppSettings() },
                 )
                 is SignalUiState.Error -> ErrorScreen(s.message) { launcher.launch(perms) }
                 is SignalUiState.Success -> {
@@ -172,15 +302,36 @@ fun MainScreen(vm: SignalViewModel = viewModel()) {
                             AppTab.HISTORY -> HistoryScreen(
                                 history = vm.history,
                                 onClear = { vm.clearHistory() },
-                                onExport = { vm.getAllReadings() },
+                                onExport = { onReady -> vm.exportReadingsAsCsv(onReady) },
                                 pollIntervalMs = pollIntervalMs,
                             )
 
-                            AppTab.INFO -> InfoScreen(pollIntervalMs = pollIntervalMs)
+                            AppTab.TOWERS -> TowersScreen(
+                                towerTriangulationEnabled = towerTriangulationEnabled,
+                                currentLocation = currentLocation,
+                                towers = towerEstimatesDetailed,
+                                onRefresh = { vm.refreshTowerEstimatesDetailed() },
+                            )
+
+                            AppTab.INFO -> InfoScreen()
                             AppTab.SETTINGS -> SettingsScreen(
                                 pollIntervalMs = pollIntervalMs,
                                 onPollIntervalChange = { vm.setPollIntervalMs(it) },
                                 onClearPersistedHistory = { vm.clearPersistedHistory() },
+                                availableSims = availableSims,
+                                selectedSubscriptionId = selectedSubscriptionId,
+                                onSelectSubscription = { vm.setSelectedSubscriptionId(it) },
+                                towerTriangulationEnabled = towerTriangulationEnabled,
+                                onToggleTowerTriangulation = { enabled ->
+                                    if (enabled && !hasLocationPerms()) {
+                                        locationPermsLauncher.launch(locationPerms)
+                                    } else {
+                                        vm.setTowerTriangulationEnabled(enabled)
+                                    }
+                                },
+                                onClearTowerEstimates = { vm.clearTowerEstimates() },
+                                historyRetentionDays = historyRetentionDays,
+                                onHistoryRetentionDaysChange = { vm.setHistoryRetentionDays(it) },
                             )
                         }
                     }
@@ -421,18 +572,11 @@ private fun SignalTabContent(state: SignalUiState.Success) {
             item {
                 Column {
                     SectionHeader("Métricas de sinal")
-                    // Os campos base (ASU, Nível) são sempre exibidos.
-                    // dBm só é adicionado manualmente para tecnologias que NÃO
-                    // colocam já o dBm no extraMetrics com outro nome
-                    // (LTE já coloca "RSRP", 5G já coloca "SS-RSRP",
-                    //  3G já coloca "RSCP", 2G já coloca "RSSI").
-                    val hasDedicated = primary.networkType in listOf(
-                        NetworkType.LTE, NetworkType.NR_5G,
-                        NetworkType.WCDMA, NetworkType.HSPA,
-                        NetworkType.GSM_2G,
-                    )
+                    // Os campos base (ASU, Nível) são sempre exibidos. dBm só é
+                    // adicionado manualmente para tecnologias que NÃO colocam já
+                    // um dBm nomeado em extraMetrics (ver NetworkType.hasDedicatedDbmMetric).
                     val allMetrics = buildMap {
-                        if (!hasDedicated) put("dBm", "${primary.dbm} dBm")
+                        if (!primary.networkType.hasDedicatedDbmMetric) put("dBm", "${primary.dbm} dBm")
                         put("ASU", "${primary.asuLevel}")
                         put("Nível", "${primary.level} / 4")
                         putAll(primary.extraMetrics)
@@ -494,7 +638,7 @@ private fun SignalTabContent(state: SignalUiState.Success) {
 
 @Composable
 private fun LiveDot(updatedAt: Long) {
-    val fmt = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+    val fmt = remember { SimpleDateFormat("HH:mm:ss", Locale.US) }
     val timeStr = remember(updatedAt) { fmt.format(Date(updatedAt)) }
     val pulse by rememberInfiniteTransition(label = "dot").animateFloat(
         initialValue = 0.35f,

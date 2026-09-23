@@ -14,25 +14,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ls.data.*
 import com.example.ls.ui.components.NetworkBadge
 import com.example.ls.ui.components.Wordmark
-import com.example.ls.ui.components.formatIntervalLabel
 import com.example.ls.ui.theme.*
 
 @Composable
-fun InfoScreen(pollIntervalMs: Long, modifier: Modifier = Modifier) {
+fun InfoScreen(modifier: Modifier = Modifier) {
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item { InfoHeader() }
         item { InfoCard("Referência de qualidade") { QualityTable() } }
         item { InfoCard("Tecnologias de rede") { NetworkTable() } }
         item { InfoCard("Glossário de métricas") { MetricsTable() } }
-        item { InfoCard("Como a leitura funciona") { HowItWorks(pollIntervalMs) } }
         item { Spacer(Modifier.height(16.dp)) }
     }
 }
@@ -117,29 +113,6 @@ private fun MetricsTable() {
             Text(key, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AccentCyan, modifier = Modifier.width(70.dp))
             Text(desc, fontSize = 12.sp, color = TextMuted, lineHeight = 17.sp, modifier = Modifier.weight(1f))
         }
-    }
-}
-
-@Composable
-private fun HowItWorks(pollIntervalMs: Long) {
-    listOf(
-        Icons.Default.PhoneAndroid to "Usa TelephonyManager.getAllCellInfo() para ler os dados brutos do modem.",
-        Icons.Default.CellTower    to "Cada CellInfo é uma antena detectada — não só a conectada, mas as vizinhas também.",
-        Icons.Default.Refresh      to "Atualizado a cada ${formatIntervalLabel(pollIntervalMs)}. O Android pode limitar a frequência em alguns aparelhos.",
-        Icons.Default.Lock         to "A partir do Android 9 (API 28), exige permissão de localização — só para o sinal, sem rastreamento.",
-        Icons.Default.BarChart     to "Os dBm vêm diretamente do hardware via driver — são medições reais, não estimativas.",
-    ).forEachIndexed { idx, (icon, text) ->
-        if (idx > 0) Spacer(Modifier.height(14.dp))
-        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(icon, null, tint = AccentBlue, modifier = Modifier.size(18.dp).padding(top = 1.dp))
-            Text(text, fontSize = 13.sp, color = TextSecondary, lineHeight = 19.sp)
-        }
-    }
-    Spacer(Modifier.height(12.dp))
-    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(AccentBlue.copy(alpha = 0.07f)).border(1.dp, AccentBlue.copy(alpha = 0.2f), RoundedCornerShape(8.dp)).padding(10.dp)) {
-        Icon(Icons.Default.Info, null, tint = AccentBlue, modifier = Modifier.size(14.dp).padding(top = 1.dp))
-        Text("Emuladores retornam dados simulados. Teste sempre em dispositivo físico.", fontSize = 11.sp, color = TextSecondary, lineHeight = 16.sp)
     }
 }
 

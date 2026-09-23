@@ -34,7 +34,19 @@ fun SignalChart(points: List<SignalPoint>, minDbm: Int, maxDbm: Int, modifier: M
         return
     }
 
-    val drawProgress by animateFloatAsState(1f, tween(800, easing = FastOutSlowInEasing), label = "chart")
+    // remember(0f) + LaunchedEffect(Unit), não animateFloatAsState(1f): o
+    // Animatable interno de animateFloatAsState(targetValue) já nasce em
+    // targetValue na primeira composição — animateTo(1f) partindo de 1f não
+    // interpola nada, então a linha "entrando" nunca de fato animava (bug).
+    // LaunchedEffect(Unit), não LaunchedEffect(points): points muda a cada
+    // tick de poll (até 5x/s) enquanto a tela fica aberta — reanimar a cada
+    // leitura nova faria o gráfico "resetar" continuamente em vez de entrar
+    // uma vez só ao montar a tela (Unit dispara uma vez por entrada na
+    // composição, ex.: trocar de aba e voltar para Histórico).
+    val drawProgress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        drawProgress.animateTo(1f, tween(800, easing = FastOutSlowInEasing))
+    }
 
     Canvas(modifier = modifier.fillMaxWidth().height(220.dp)) {
         val w = size.width; val h = size.height
@@ -51,7 +63,7 @@ fun SignalChart(points: List<SignalPoint>, minDbm: Int, maxDbm: Int, modifier: M
             drawLine(BorderSubtle, Offset(padL, yOf(dbm)), Offset(w - padR, yOf(dbm)), 1f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
         }
 
-        val visible = points.takeLast((n * drawProgress).toInt().coerceAtLeast(2))
+        val visible = points.takeLast((n * drawProgress.value).toInt().coerceAtLeast(2))
         val off = n - visible.size
         if (visible.size < 2) return@Canvas
 

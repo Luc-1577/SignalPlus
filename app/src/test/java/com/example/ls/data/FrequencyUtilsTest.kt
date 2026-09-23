@@ -119,6 +119,36 @@ class FrequencyUtilsTest {
         assertEquals(2112.4, uarfcnToMhz(10562)!!, DELTA)
     }
 
+    // ── uarfcnToWcdmaInfo ───────────────────────────────────────────────────
+    // Espaçamento duplex varia por banda (era o bug: 190MHz hardcoded, correto
+    // só pra Band I) — cada banda testada aqui usa um espaçamento diferente.
+
+    @Test
+    fun `uarfcnToWcdmaInfo Band I uses 190MHz duplex spacing`() {
+        val (band, fdl, ful) = uarfcnToWcdmaInfo(10562)!!
+        assertEquals(1, band)
+        assertEquals(2112.4, fdl, DELTA)
+        assertEquals(1922.4, ful, DELTA)
+    }
+
+    @Test
+    fun `uarfcnToWcdmaInfo Band V (850MHz, comum no Brasil) uses 45MHz duplex spacing`() {
+        val (band, fdl, ful) = uarfcnToWcdmaInfo(4400)!!
+        assertEquals(5, band)
+        assertEquals(880.0, fdl, DELTA)
+        assertEquals(835.0, ful, DELTA)
+    }
+
+    @Test
+    fun `uarfcnToWcdmaInfo unrecognized band returns null instead of guessing`() {
+        assertNull(uarfcnToWcdmaInfo(99_999))
+    }
+
+    @Test
+    fun `uarfcnToWcdmaInfo zero returns null`() {
+        assertNull(uarfcnToWcdmaInfo(0))
+    }
+
     // ── gsmArfcnToInfo ──────────────────────────────────────────────────────
 
     @Test

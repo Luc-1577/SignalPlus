@@ -46,4 +46,27 @@ class SignalReadingDaoTest {
         dao.clearAll()
         assertTrue(dao.getAll().isEmpty())
     }
+
+    @Test
+    fun deleteOlderThan_removesOnlyReadingsBeforeCutoff() = runBlocking {
+        dao.insert(SignalReadingEntity(timestampMs = 100, dbm = -90, networkType = "LTE", operator = "Vivo"))
+        dao.insert(SignalReadingEntity(timestampMs = 200, dbm = -85, networkType = "LTE", operator = "Vivo"))
+        dao.insert(SignalReadingEntity(timestampMs = 300, dbm = -80, networkType = "LTE", operator = "Vivo"))
+
+        dao.deleteOlderThan(cutoffMs = 200)
+
+        val remaining = dao.getAll()
+        assertEquals(2, remaining.size)
+        assertEquals(listOf(200L, 300L), remaining.map { it.timestampMs })
+    }
+
+    @Test
+    fun deleteOlderThan_withCutoffAfterEverything_removesAllReadings() = runBlocking {
+        dao.insert(SignalReadingEntity(timestampMs = 100, dbm = -90, networkType = "LTE", operator = "Vivo"))
+        dao.insert(SignalReadingEntity(timestampMs = 200, dbm = -85, networkType = "LTE", operator = "Vivo"))
+
+        dao.deleteOlderThan(cutoffMs = 1_000)
+
+        assertTrue(dao.getAll().isEmpty())
+    }
 }

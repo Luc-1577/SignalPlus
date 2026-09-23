@@ -64,9 +64,38 @@ fun nrArfcnToMhz(arfcn: Int): Double? = when {
     else              -> null
 }
 
-/** UARFCN → FDL em MHz (FDL = UARFCN × 0.2). */
+/** UARFCN → FDL em MHz (FDL = UARFCN × 0.2, válido pra qualquer banda WCDMA). */
 fun uarfcnToMhz(uarfcn: Int): Double? =
     if (uarfcn > 0) uarfcn * 0.2 else null
+
+// ── WCDMA Band Table (3GPP TS 25.101 Table 5.2, faixa downlink Nu) ────────
+// O espaçamento duplex (FDL-FUL) varia por banda — NÃO é um valor fixo global
+// (era o bug: hardcoded 190MHz, correto só pra Band I). Nu_low/Nu_high aqui
+// são o range de UARFCN de downlink que identifica a banda.
+
+private data class WcdmaBand(val band: Int, val nuLow: Int, val nuHigh: Int, val duplexMhz: Double)
+
+private val WCDMA_BANDS: List<WcdmaBand> = listOf(
+    WcdmaBand(1, 10562, 10838, 190.0),  // 2100
+    WcdmaBand(2,  9662,  9938,  80.0),  // 1900 PCS
+    WcdmaBand(3,  1162,  1513,  95.0),  // 1800
+    WcdmaBand(4,  1537,  1738, 400.0),  // AWS 1700/2100
+    WcdmaBand(5,  4357,  4458,  45.0),  // 850 — comum no Brasil fora dos grandes centros
+    WcdmaBand(6,  4387,  4413,  45.0),  // 800 (Japão)
+    WcdmaBand(8,  2937,  3088,  45.0),  // 900
+    WcdmaBand(9,  9237,  9387,  95.0),  // 1700 (Japão)
+)
+
+/** UARFCN → Triple(banda, FDL_MHz, FUL_MHz). Null se a banda não for
+ *  reconhecida — antes disso, FUL sempre assumia o espaçamento duplex da
+ *  Band I (190MHz), errado pra Band V/850MHz (comum no Brasil) e outras;
+ *  falhar fechado (null) é melhor que mostrar um FUL tecnicamente incorreto
+ *  como se fosse um dado preciso. */
+fun uarfcnToWcdmaInfo(uarfcn: Int): Triple<Int, Double, Double>? {
+    val fdl = uarfcnToMhz(uarfcn) ?: return null
+    val b = WCDMA_BANDS.firstOrNull { uarfcn in it.nuLow..it.nuHigh } ?: return null
+    return Triple(b.band, fdl, fdl - b.duplexMhz)
+}
 
 /** GSM ARFCN → (FDL_MHz, FUL_MHz) por banda (3GPP TS 45.005 §2). */
 fun gsmArfcnToInfo(arfcn: Int): Pair<Double, Double>? = when (arfcn) {

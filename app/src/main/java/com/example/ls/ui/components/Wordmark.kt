@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -61,10 +63,17 @@ fun SignalPlusMark(size: Dp = 14.dp, modifier: Modifier = Modifier) {
     }
 }
 
-/** Lockup "Signal" + [SignalPlusMark], usado no lugar do antigo texto estático "Signal Meter". */
+/** Lockup "Signal" + [SignalPlusMark], usado no lugar do antigo texto estático "Signal Meter".
+ *  clearAndSetSemantics: sem isso, um leitor de tela (TalkBack) anuncia só
+ *  "Signal" — o Text real — e ignora o SignalPlusMark (um Canvas puramente
+ *  decorativo, sem nenhuma semântica própria), nunca lendo o nome completo do
+ *  produto "Signal+". Junta os dois nós num só, com a descrição correta. */
 @Composable
 fun Wordmark(fontSize: TextUnit = 17.sp, markSize: Dp = 14.dp, modifier: Modifier = Modifier) {
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = modifier.clearAndSetSemantics { contentDescription = "Signal+" },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(
             "Signal",
             fontSize = fontSize,

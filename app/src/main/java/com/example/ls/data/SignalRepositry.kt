@@ -21,21 +21,69 @@ class SignalRepository(private val context: Context) {
         const val CELL_INFO_TIMEOUT_MS = 5_000L
     }
 
-    private val telephony: TelephonyManager by lazy {
+    private val defaultTelephony: TelephonyManager by lazy {
         context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
     }
 
-    suspend fun readCells(): List<CellSignalData> = withContext(Dispatchers.IO) {
+    // Cache de 1 entrada: o subscriptionId escolhido pelo usuário raramente muda
+    // entre polls (default 1s) — sem isso, createForSubscriptionId() (não-trivial,
+    // não documentado como barato) seria recriado a cada tick indefinidamente
+    // enquanto a aba Sinal estiver aberta. readCells() só é chamado
+    // sequencialmente pelo loop de polling da ViewModel, então não há corrida
+    // entre leitura e escrita desses dois campos.
+    private var cachedSubscriptionId: Int = AUTOMATIC_SUBSCRIPTION_ID
+    private var cachedTelephony: TelephonyManager? = null
+
+    /** Resolve o TelephonyManager para uma assinatura específica, com fallback
+     *  para o padrão se a assinatura não existir mais (ex.: SIM removido). */
+    private fun telephonyFor(subscriptionId: Int): TelephonyManager {
+        if (subscriptionId == AUTOMATIC_SUBSCRIPTION_ID) return defaultTelephony
+        cachedTelephony?.let { if (cachedSubscriptionId == subscriptionId) return it }
+        // Só cacheia em caso de SUCESSO — se createForSubscriptionId() falhar (ex.:
+        // troca de SIM em andamento), cair no fallback sem cachear garante que o
+        // próximo poll tente de novo, em vez de travar nesse SIM errado até reiniciar
+        // o app.
+        return try {
+            defaultTelephony.createForSubscriptionId(subscriptionId).also {
+                cachedSubscriptionId = subscriptionId
+                cachedTelephony = it
+            }
+        } catch (_: Exception) {
+            defaultTelephony
+        }
+    }
+
+    suspend fun readCells(subscriptionId: Int = AUTOMATIC_SUBSCRIPTION_ID): List<CellSignalData> = withContext(Dispatchers.IO) {
         try {
-            val operator = telephony.networkOperatorName
+            val tm = telephonyFor(subscriptionId)
+            val operator = tm.networkOperatorName
                 .takeIf { it.isNotBlank() } ?: "Desconhecido"
 
-            val primaryBwKhz = readPrimaryBwKhz()
+            val primaryBwKhz = readPrimaryBwKhz(tm)
 
-            fetchCellInfo()
+            fetchCellInfo(tm)
                 .mapNotNull { parseCellInfo(it, operator, primaryBwKhz) }
                 .sortedByDescending { it.dbm }
                 .sortedByDescending { it.isRegistered }
+        } catch (_: SecurityException) { emptyList() }
+        catch (_: Exception)         { emptyList() }
+    }
+
+    /** SIMs ativos no aparelho, para o seletor em Configurações. Lista vazia em
+     *  aparelhos single-SIM ou se a permissão/API falhar — o chamador só mostra
+     *  o seletor quando há 2+ itens. */
+    suspend fun listActiveSims(): List<SimOption> = withContext(Dispatchers.IO) {
+        try {
+            val sm = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
+                ?: return@withContext emptyList()
+            (sm.activeSubscriptionInfoList ?: emptyList()).map { info ->
+                SimOption(
+                    subscriptionId = info.subscriptionId,
+                    slotIndex      = info.simSlotIndex,
+                    displayName    = info.displayName?.toString()?.takeIf { it.isNotBlank() }
+                        ?: "SIM ${info.simSlotIndex + 1}",
+                )
+            }
         } catch (_: SecurityException) { emptyList() }
         catch (_: Exception)         { emptyList() }
     }
@@ -45,41 +93,75 @@ class SignalRepository(private val context: Context) {
      * refresh do modem — só retorna o último resultado em cache. A partir da API 29,
      * usamos [TelephonyManager.requestCellInfoUpdate] para obter uma leitura fresca.
      */
-    private suspend fun fetchCellInfo(): List<CellInfo> {
+    private suspend fun fetchCellInfo(tm: TelephonyManager): List<CellInfo> {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            return telephony.allCellInfo ?: emptyList()
+            return tm.safeAllCellInfo()
         }
-        val fresh = try {
+        val fresh: List<CellInfo>? = try {
             withTimeoutOrNull(CELL_INFO_TIMEOUT_MS) {
-                suspendCancellableCoroutine<List<CellInfo>> { cont ->
-                    telephony.requestCellInfoUpdate(
-                        context.mainExecutor,
-                        object : TelephonyManager.CellInfoCallback() {
-                            override fun onCellInfo(cellInfo: List<CellInfo>) {
-                                if (cont.isActive) cont.resume(cellInfo)
-                            }
+                suspendCancellableCoroutine<List<CellInfo>?> { cont ->
+                    try {
+                        tm.requestCellInfoUpdate(
+                            context.mainExecutor,
+                            object : TelephonyManager.CellInfoCallback() {
+                                override fun onCellInfo(cellInfo: List<CellInfo>) {
+                                    if (cont.isActive) cont.resume(cellInfo)
+                                }
 
-                            override fun onError(errorCode: Int, detail: Throwable?) {
-                                if (cont.isActive) cont.resume(telephony.allCellInfo ?: emptyList())
-                            }
-                        },
-                    )
+                                override fun onError(errorCode: Int, detail: Throwable?) {
+                                    // NÃO chama tm.safeAllCellInfo() aqui: este callback roda
+                                    // no mainExecutor (main thread), e allCellInfo é uma
+                                    // chamada Binder síncrona — bloqueá-la aqui violaria a
+                                    // regra do projeto de todo I/O de hardware rodar em
+                                    // Dispatchers.IO e arrisca ANR se o modem cair em erro
+                                    // repetidamente com o polling ativo. Resolve com null e
+                                    // deixa quem chama (já em Dispatchers.IO, ver readCells())
+                                    // buscar o cache depois.
+                                    if (cont.isActive) cont.resume(null)
+                                }
+                            },
+                        )
+                    } catch (_: SecurityException) {
+                        // onCellInfo/onError rodam de forma assíncrona no mainExecutor, fora do
+                        // escopo dinâmico deste try — uma SecurityException lançada de dentro de
+                        // onError não seria pega por nenhum catch externo. Por isso cada chamada
+                        // arriscada tem sua própria proteção local, em vez de confiar só no
+                        // try/catch de fora.
+                        if (cont.isActive) cont.resume(emptyList())
+                    }
                 }
             }
         } catch (_: Exception) {
             null
         }
-        // null = timeout (modem nunca chamou onCellInfo/onError) ou exceção — cai pro cache.
-        return fresh ?: (telephony.allCellInfo ?: emptyList())
+        // null = timeout, onError, ou exceção — cai pro cache aqui, já em
+        // Dispatchers.IO (herdado do withContext de readCells()), não mais na
+        // main thread de dentro do callback.
+        return fresh ?: tm.safeAllCellInfo()
     }
 
-    private fun readPrimaryBwKhz(): Int? {
+    /** [TelephonyManager.getAllCellInfo] exige permissão de localização a partir da
+     *  API 28 — encapsulado aqui pra toda chamada (síncrona ou dentro de um callback
+     *  assíncrono, como em [fetchCellInfo]) ficar protegida da mesma forma. */
+    private fun TelephonyManager.safeAllCellInfo(): List<CellInfo> = try {
+        allCellInfo ?: emptyList()
+    } catch (_: SecurityException) {
+        emptyList()
+    } catch (_: Exception) {
+        // Chamada também a partir de CellInfoCallback.onError (fetchCellInfo,
+        // acima), um callback assíncrono no mainExecutor — fora do try/catch de
+        // readCells(). Uma RuntimeException não-SecurityException aqui (já
+        // documentada em alguns OEMs) ficaria sem handler e derrubaria o app.
+        emptyList()
+    }
+
+    private fun readPrimaryBwKhz(tm: TelephonyManager): Int? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return null
         return try {
             // getPhysicalChannelConfigs can be tricky due to visibility in different SDKs.
             // Using reflection to ensure access to it.
-            val method = telephony.javaClass.getMethod("getPhysicalChannelConfigs")
-            val configs = method.invoke(telephony) as? List<*>
+            val method = tm.javaClass.getMethod("getPhysicalChannelConfigs")
+            val configs = method.invoke(tm) as? List<*>
             if (!configs.isNullOrEmpty()) {
                 val config = configs[0] ?: return null
                 // PhysicalChannelConfig.getCellBandwidthDownlinkKhz()
@@ -110,6 +192,10 @@ class SignalRepository(private val context: Context) {
         val pci   = safeI { cid.pci.takeIf { it != Int.MAX_VALUE } }
         val arfcn = safeI { cid.nrarfcn.takeIf { it > 0 } }
 
+        // Aproximação: o split gNB ID (22 bits) / Cell ID local (14 bits) é o
+        // mais comum na prática, mas o 3GPP (TS 38.401) não fixa esse tamanho —
+        // é configurável por operadora (a API Android não expõe o valor real),
+        // então este gNB pode estar incorreto em redes que usam outro split.
         val gnbId = nci?.let { it ushr 14 }
         val freq  = arfcn?.let { nrArfcnToMhz(it) }
 
@@ -226,8 +312,13 @@ class SignalRepository(private val context: Context) {
         val psc    = safeI { cid.psc.takeIf { it != Int.MAX_VALUE } }
         val uarfcn = safeI { cid.uarfcn.takeIf { it > 0 } }
 
-        val fdl = uarfcn?.let { uarfcnToMhz(it) }
-        val ful = fdl?.let { it - 190.0 }
+        // Espaçamento duplex (FDL-FUL) varia por banda — ver uarfcnToWcdmaInfo().
+        // null (banda não reconhecida) é preferível a assumir a Band I e mostrar
+        // um FUL errado como se fosse preciso.
+        val wcdmaInfo = uarfcn?.let { uarfcnToWcdmaInfo(it) }
+        val fdl  = wcdmaInfo?.second ?: uarfcn?.let { uarfcnToMhz(it) }
+        val ful  = wcdmaInfo?.third
+        val band = wcdmaInfo?.first
 
         return CellSignalData(
             networkType  = NetworkType.WCDMA,
@@ -245,7 +336,7 @@ class SignalRepository(private val context: Context) {
                 arfcn         = uarfcn,
                 fdlMhz        = fdl,
                 fulMhz        = ful,
-                band          = null,
+                band          = band,
                 bwKhz         = 5000,
                 timingAdvance = null,
                 tacLabel      = "LAC",

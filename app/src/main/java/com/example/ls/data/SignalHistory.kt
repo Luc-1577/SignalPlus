@@ -1,9 +1,11 @@
 package com.example.ls.data
 
+import androidx.compose.runtime.Immutable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+@Immutable
 data class SignalPoint(
     val timestampMs : Long,
     val dbm         : Int,

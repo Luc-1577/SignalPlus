@@ -25,15 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ls.data.SignalHistory
-import com.example.ls.data.SignalPoint
-import com.example.ls.data.db.SignalReadingEntity
 import com.example.ls.data.signalQuality
 import com.example.ls.ui.components.*
 import com.example.ls.ui.theme.*
-import com.example.ls.util.CsvExportUtil
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -41,7 +35,7 @@ import java.util.*
 fun HistoryScreen(
     history: SignalHistory,
     onClear: () -> Unit,
-    onExport: suspend () -> List<SignalReadingEntity>,
+    onExport: (onReady: (Intent) -> Unit) -> Unit,
     pollIntervalMs: Long,
     modifier: Modifier = Modifier,
 ) {
@@ -52,7 +46,7 @@ fun HistoryScreen(
     val minPt  = points.minByOrNull { it.dbm }
     val maxPt  = points.maxByOrNull { it.dbm }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val timeFmt = remember { SimpleDateFormat("HH:mm:ss", Locale.US) }
 
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
@@ -65,16 +59,11 @@ fun HistoryScreen(
                     Row {
                         TextButton(
                             onClick = {
-                                scope.launch {
-                                    val readings = onExport()
-                                    // toCsv()/writeText() são CPU/I/O de disco — não têm
-                                    // ponto de suspensão próprio, então sem isso rodariam
-                                    // na thread principal (herdada do rememberCoroutineScope)
-                                    // e travariam a UI proporcionalmente ao tamanho do
-                                    // histórico, que agora não tem limite no Room.
-                                    val intent = withContext(Dispatchers.IO) {
-                                        CsvExportUtil.buildShareIntent(context, readings)
-                                    }
+                                // A leitura do Room + escrita do CSV roda em
+                                // viewModelScope (ver SignalViewModel.exportReadingsAsCsv) —
+                                // não neste onClick — pra sobreviver a uma troca de aba
+                                // que descomponha esta tela antes do export terminar.
+                                onExport { intent ->
                                     context.startActivity(Intent.createChooser(intent, "Exportar histórico"))
                                 }
                             },
@@ -153,8 +142,7 @@ fun HistoryScreen(
             item { SectionHeader("Últimas leituras") }
             val reversed = points.reversed().take(40)
             items(reversed, key = { it.timestampMs }) { pt ->
-                val fmt = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
-                val time = remember(pt.timestampMs) { fmt.format(Date(pt.timestampMs)) }
+                val time = remember(pt.timestampMs) { timeFmt.format(Date(pt.timestampMs)) }
                 val q = signalQuality(pt.dbm, pt.networkType)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(10.dp)).background(BgCard).border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)).padding(horizontal = 14.dp, vertical = 10.dp)) {
