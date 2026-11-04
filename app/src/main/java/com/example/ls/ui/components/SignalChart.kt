@@ -14,6 +14,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,7 +50,11 @@ fun SignalChart(points: List<SignalPoint>, minDbm: Int, maxDbm: Int, modifier: M
         drawProgress.animateTo(1f, tween(800, easing = FastOutSlowInEasing))
     }
 
-    Canvas(modifier = modifier.fillMaxWidth().height(220.dp)) {
+    // Canvas não expõe nada ao TalkBack por conta própria — sem isso o gráfico
+    // era pulado em silêncio. Resumo textual da mesma informação que a linha
+    // mostra visualmente (faixa e leitura mais recente).
+    val description = remember(points) { signalChartDescription(points) }
+    Canvas(modifier = modifier.fillMaxWidth().height(220.dp).semantics { contentDescription = description }) {
         val w = size.width; val h = size.height
         val padL = 52f; val padR = 16f; val padT = 16f; val padB = 32f
         val chartW = w - padL - padR; val chartH = h - padT - padB
@@ -107,4 +113,13 @@ fun ChartYLabels(minDbm: Int, maxDbm: Int, modifier: Modifier = Modifier) {
             Text("$dbm", fontSize = 9.sp, color = TextDim, fontWeight = FontWeight.Medium)
         }
     }
+}
+
+/** Resumo falado do gráfico para leitores de tela. Puro (sem Compose) para
+ *  ser testável em JVM. */
+internal fun signalChartDescription(points: List<SignalPoint>): String {
+    if (points.isEmpty()) return "Gráfico de sinal sem leituras"
+    val min = points.minOf { it.dbm }
+    val max = points.maxOf { it.dbm }
+    return "Gráfico de sinal: ${points.size} leituras, mínimo $min dBm, máximo $max dBm, última ${points.last().dbm} dBm"
 }

@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -175,6 +176,10 @@ private fun RowScope.IdItem(
     Column(
         modifier = Modifier
             .weight(1f)
+            // Agrupa rótulo + valor num único nó de acessibilidade — sem isso o
+            // TalkBack parava duas vezes por campo ("PCI", depois "123") em vez
+            // de ler "PCI, 123" de uma vez só.
+            .semantics(mergeDescendants = true) {}
             .clip(RoundedCornerShape(10.dp))
             .background(BgCardAlt)
             .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))

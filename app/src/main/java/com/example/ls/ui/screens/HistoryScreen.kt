@@ -144,11 +144,17 @@ fun HistoryScreen(
             items(reversed, key = { it.timestampMs }) { pt ->
                 val time = remember(pt.timestampMs) { timeFmt.format(Date(pt.timestampMs)) }
                 val q = signalQuality(pt.dbm, pt.networkType)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(10.dp)).background(BgCard).border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)).padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    Box(Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(q.color))
+                    // QualityBadge (bolinha + rótulo textual), não só a bolinha
+                    // sozinha: cor sem nenhum texto de categoria ao lado viola
+                    // WCAG 1.4.1 (informação só por cor) — usuário sem
+                    // percepção de cor não tinha como saber se a leitura era
+                    // boa ou ruim sem interpretar o dBm de cabeça. Mesmo padrão
+                    // já usado em MainScreen (aba Sinal).
+                    QualityBadge(q)
                     Text(time, fontSize = 12.sp, color = TextMuted, modifier = Modifier.width(60.dp))
-                    NetworkBadge(pt.networkType)
+                    NetworkBadge(pt.networkType, showLabel = false)
                     Spacer(Modifier.weight(1f))
                     Text("${pt.dbm} dBm", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = q.color, textAlign = TextAlign.End)
                 }

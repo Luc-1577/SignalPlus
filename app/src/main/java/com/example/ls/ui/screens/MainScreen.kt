@@ -380,7 +380,10 @@ private fun AppBottomBar(currentTab: AppTab, onTabClick: (AppTab) -> Unit) {
             NavigationBarItem(
                 selected = selected,
                 onClick = { onTabClick(item.tab) },
-                icon = { Icon(item.icon, item.label, Modifier.size(22.dp)) },
+                // contentDescription = null: o rótulo visível logo abaixo já nomeia
+                // o item — repetir o mesmo texto no ícone fazia o TalkBack ler o
+                // nome da aba duas vezes.
+                icon = { Icon(item.icon, null, Modifier.size(22.dp)) },
                 label = {
                     Text(
                         item.label,

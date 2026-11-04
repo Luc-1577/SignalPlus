@@ -44,9 +44,15 @@ data class TowerDisplayEntry(
     val isKnown: Boolean,
 )
 
-class TowerPositionRepository(context: Context) {
+class TowerPositionRepository internal constructor(private val dao: TowerPositionDao) {
 
-    private val dao: TowerPositionDao = AppDatabase.getDatabase(context).towerPositionDao()
+    /** Resolve o singleton file-backed real via [AppDatabase.getDatabase] — o
+     *  caminho de produção, usado em todo o resto do app. O construtor
+     *  primário acima (internal) existe só para teste instrumentado injetar
+     *  um [TowerPositionDao] de um Room in-memory em vez desse singleton —
+     *  mesmo padrão usado em [SignalReadingRepository]. */
+    constructor(context: Context) : this(AppDatabase.getDatabase(context).towerPositionDao())
+
     private val mutex = Mutex()
 
     /** Epoch da última limpeza, só lido/escrito sob [mutex] — junto com o

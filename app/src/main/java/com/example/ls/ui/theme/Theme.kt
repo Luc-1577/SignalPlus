@@ -27,6 +27,13 @@ private val DarkColorScheme = darkColorScheme(
     outlineVariant      = BorderSubtle,
     error               = QualityVeryPoor,
     onError             = Color.White,
+    // Sem isso, AlertDialog (DestructiveConfirmDialog, diálogo de renomear em
+    // ExportManagerScreen) cai no default do Material3 (#2B2930, um token de
+    // paleta neutra que não existe em Color.kt) em vez de uma cor do projeto —
+    // a correção de contraste WCAG de TextSecondary/QualityVeryPoor foi
+    // calculada contra BgCard, nunca contra esse token, deixando o corpo de
+    // texto e as mensagens de erro dos diálogos abaixo do mínimo AA.
+    surfaceContainerHigh = BgCard,
 )
 
 private val AppTypography = Typography(

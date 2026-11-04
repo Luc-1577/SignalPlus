@@ -35,6 +35,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -189,8 +191,22 @@ private fun RadarScope(points: List<RadarPoint>, modifier: Modifier = Modifier) 
     val ringStep = maxDistM / 3.0
     val rings = listOf(ringStep, ringStep * 2, ringStep * 3)
 
+    // Canvas é invisível ao TalkBack — resume a visão espacial (quantas torres,
+    // qual a mais próxima e em que direção) num contentDescription. points já
+    // vem ordenado por distância, então first() é a mais próxima.
+    val description = remember(points) {
+        val nearest = points.firstOrNull()
+        radarContentDescription(
+            total = points.size,
+            known = points.count { it.entry.isKnown },
+            nearestDistM = nearest?.distanceM,
+            nearestBearingDeg = nearest?.bearingDeg,
+        )
+    }
+
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth().aspectRatio(1f)
+            .semantics { contentDescription = description }
             .clip(RoundedCornerShape(16.dp))
             .background(BgDeep)
             .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
@@ -330,10 +346,23 @@ private fun towerDisplayName(entry: TowerDisplayEntry): String {
 private fun formatDistance(meters: Double): String =
     if (meters >= 1000) "%.1f km".format(java.util.Locale.US, meters / 1000.0) else "${meters.toInt()} m"
 
-private fun formatBearingCompass(deg: Double): String {
-    val points = listOf("N", "NE", "L", "SE", "S", "SO", "O", "NO")
-    val index = (((deg + 22.5) / 45.0).toInt()) % 8
-    return points[index]
+private fun formatBearingCompass(deg: Double): String =
+    listOf("N", "NE", "L", "SE", "S", "SO", "O", "NO")[compassIndex(deg)]
+
+/** Mesmo octante de [formatBearingCompass], por extenso — "L"/"O" abreviados
+ *  seriam soletrados letra a letra pelo TalkBack. */
+private fun bearingSpoken(deg: Double): String =
+    listOf("norte", "nordeste", "leste", "sudeste", "sul", "sudoeste", "oeste", "noroeste")[compassIndex(deg)]
+
+private fun compassIndex(deg: Double): Int = (((deg + 22.5) / 45.0).toInt()) % 8
+
+/** Resumo falado do radar para leitores de tela. Recebe primitivos (não
+ *  [RadarPoint], que é private) para ser testável em JVM. */
+internal fun radarContentDescription(total: Int, known: Int, nearestDistM: Double?, nearestBearingDeg: Double?): String {
+    if (total == 0) return "Radar de torres: nenhuma torre"
+    val head = "Radar de torres: $total ${if (total == 1) "torre" else "torres"}, $known ${if (known == 1) "conhecida" else "conhecidas"}"
+    if (nearestDistM == null || nearestBearingDeg == null) return head
+    return "$head. Mais próxima a ${formatDistance(nearestDistM)} ao ${bearingSpoken(nearestBearingDeg)}"
 }
 
 /** Escala do anel MAIS EXTERNO do radar — sempre um múltiplo de 3 "redondo"

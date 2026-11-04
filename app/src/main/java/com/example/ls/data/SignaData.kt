@@ -25,6 +25,12 @@ enum class NetworkType(
     val label: String,
     val generation: String,
     val badgeColor: Color,
+    /** Cor do TEXTO do NetworkBadge — separada de [badgeColor] (usado no
+     *  fundo/borda do chip) porque [badgeColor] puro não bate 4.5:1 de
+     *  contraste WCAG AA contra o fundo real do badge (a própria cor a 18%
+     *  de opacidade sobre BgCard) para 2G/3G/4G; ver Net2GText/3G/4G em
+     *  Color.kt. Default = [badgeColor] para os casos que já passam (5G). */
+    val badgeTextColor: Color = badgeColor,
     /** true quando SignalRepository já inclui, em extraMetrics, um metric
      *  dedicado e nomeado que representa o dBm daquela tecnologia (ex.: "RSRP"
      *  em LTE, "SS-RSRP" em NR) — nesse caso a UI de métricas não precisa
@@ -37,11 +43,11 @@ enum class NetworkType(
      *  pra essas tecnologias. */
     val hasDedicatedDbmMetric: Boolean = false,
 ) {
-    GSM_2G ("GSM",   "2G", Net2G),
-    CDMA   ("CDMA",  "2G", Net2G),
-    WCDMA  ("WCDMA", "3G", Net3G),
-    HSPA   ("HSPA+", "3G", Net3G),
-    LTE    ("LTE",   "4G", Net4G, hasDedicatedDbmMetric = true),
+    GSM_2G ("GSM",   "2G", Net2G, Net2GText),
+    CDMA   ("CDMA",  "2G", Net2G, Net2GText),
+    WCDMA  ("WCDMA", "3G", Net3G, Net3GText),
+    HSPA   ("HSPA+", "3G", Net3G, Net3GText),
+    LTE    ("LTE",   "4G", Net4G, Net4GText, hasDedicatedDbmMetric = true),
     NR_5G  ("NR",    "5G", Net5G, hasDedicatedDbmMetric = true),
     UNKNOWN("?",     "?",  QualityNone),
 }

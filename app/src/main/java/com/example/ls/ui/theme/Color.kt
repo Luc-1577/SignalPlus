@@ -33,7 +33,11 @@ val AccentCyan    = Color(0xFF00D4FF)
 val AccentPurple  = Color(0xFF8B5CF6)
 
 // ── Qualidade do sinal ────────────────────────────────────────────────────
-val QualityVeryPoor = Color(0xFFEF4545)
+// QualityVeryPoor: #EF4545 original batia só 4.43:1 contra BgCard (abaixo do
+// mínimo AA de 4.5:1 pra texto pequeno) quando usada como texto de erro em
+// ExportManagerScreen — ajuste mínimo de luminosidade (imperceptível a olho
+// nu) fecha a lacuna sem mudar o tom percebido de "vermelho de alerta".
+val QualityVeryPoor = Color(0xFFEF4848)
 val QualityPoor     = Color(0xFFF97020)
 val QualityFair     = Color(0xFFF5C020)
 val QualityGood     = Color(0xFF7ED348)
@@ -45,3 +49,15 @@ val Net2G = Color(0xFF64748B)
 val Net3G = Color(0xFF8B5CF6)
 val Net4G = Color(0xFF3B82F6)
 val Net5G = Color(0xFF10B981)
+
+// Variantes SÓ para o texto do NetworkBadge (Net2G/3G/4G ficam abaixo de
+// 4.5:1 de contraste WCAG AA contra o fundo real do badge — a própria cor a
+// 18% de opacidade sobre BgCard, não BgCard puro; Net5G já passa, 4.84:1,
+// sem precisar de variante). Mesmo hue/saturação da cor original, só
+// levantando a luminosidade via busca binária até bater 4.5:1 contra esse
+// fundo — mesma técnica already usada para TextMuted/TextDim/QualityNone.
+// badgeColor em si (fundo/borda do chip) fica como está: não é texto, WCAG
+// 1.4.3 não se aplica a preenchimento decorativo.
+val Net2GText = Color(0xFF8795A9)
+val Net3GText = Color(0xFFA47FF8)
+val Net4GText = Color(0xFF5C97F8)

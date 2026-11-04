@@ -52,9 +52,12 @@ fun NetworkBadge(type: NetworkType, modifier: Modifier = Modifier, showLabel: Bo
             .border(1.dp, type.badgeColor.copy(alpha = 0.45f), RoundedCornerShape(100.dp))
             .padding(horizontal = 12.dp, vertical = 5.dp),
     ) {
-        Text(type.generation, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = type.badgeColor, letterSpacing = 0.5.sp)
+        Text(type.generation, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = type.badgeTextColor, letterSpacing = 0.5.sp)
         if (showLabel) {
-            Text(type.label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = type.badgeColor.copy(alpha = 0.85f))
+            // Sem .copy(alpha = 0.85f) aqui: badgeTextColor já foi calculado pro
+            // contraste mínimo a 100% de opacidade — aplicar alpha por cima
+            // devolveria o texto pro mesmo problema que a variante resolve.
+            Text(type.label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = type.badgeTextColor)
         }
     }
 }
@@ -160,6 +163,12 @@ fun <T> SelectableChipRow(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.weight(1f)
+                    // Diferente de Button/IconButton/Switch do M3 (que usam
+                    // Surface por baixo e por isso já garantem 48dp), este Box
+                    // cru não tinha nenhum piso de altura — o chip de retenção
+                    // (padding menor) ficava com ~34dp de área de toque real,
+                    // abaixo do mínimo recomendado (WCAG 2.5.5 / Material).
+                    .defaultMinSize(minHeight = 48.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (selected) AccentBlue else BgCardAlt)
                     .border(1.dp, if (selected) AccentBlue else BorderSubtle, RoundedCornerShape(12.dp))

@@ -3,12 +3,16 @@ package com.example.ls
 import android.Manifest
 import android.os.Build
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -63,5 +67,13 @@ class ExampleInstrumentedTest {
         // lookup like onNodeWithText("Signal") only matches the unmerged tree and
         // fails here. Content-description is the stable, intended public surface.
         composeRule.onNodeWithContentDescription("Signal+").assertExists()
+    }
+
+    @Test
+    fun bottomBarItem_doesNotDuplicateLabelAsIconDescription() {
+        // Ícone da aba com contentDescription = null: o nó mesclado do item só
+        // carrega o rótulo visível, então o TalkBack não lê "Histórico" duas vezes.
+        val node = composeRule.onNodeWithText("Histórico").fetchSemanticsNode()
+        assertNull(node.config.getOrNull(SemanticsProperties.ContentDescription))
     }
 }

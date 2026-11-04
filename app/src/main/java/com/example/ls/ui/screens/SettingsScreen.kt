@@ -2,6 +2,7 @@ package com.example.ls.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Folder
@@ -17,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -156,7 +158,22 @@ fun SettingsScreen(
         }
         item {
             SettingsCard {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    // toggleable() na Row inteira (não só no Switch): sem isso,
+                    // o Switch virava um nó de acessibilidade isolado, sem
+                    // nenhum nome associado programaticamente ao "Estimar
+                    // posição das torres" ao lado (WCAG 4.1.2, Name/Role/Value)
+                    // — TalkBack lia só "Switch, desligado", sem dizer o quê.
+                    // De brinde, a área de toque agora é a Row inteira, não só
+                    // o Switch. onCheckedChange = null no Switch abaixo evita
+                    // handler duplicado (o toggle já é tratado aqui).
+                    modifier = Modifier.fillMaxWidth().toggleable(
+                        value = towerTriangulationEnabled,
+                        onValueChange = onToggleTowerTriangulation,
+                        role = Role.Switch,
+                    ),
+                ) {
                     Column(modifier = Modifier.weight(1f)) {
                         SectionHeader("Estimar posição das torres")
                         Text(
@@ -170,7 +187,7 @@ fun SettingsScreen(
                     Spacer(Modifier.width(12.dp))
                     Switch(
                         checked = towerTriangulationEnabled,
-                        onCheckedChange = onToggleTowerTriangulation,
+                        onCheckedChange = null,
                         colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue),
                     )
                 }
