@@ -6,4 +6,10 @@
          por padrão), filesDir É incluído no backup por padrão, então precisa
          de exclusão explícita. -->
     <exclude domain="file" path="exports/" />
+    <!-- signalmeter.db guarda as posições estimadas de torres (coordenadas de
+         localização, tabela tower_positions). Dado sensível não deve ir pro
+         backup; o Room mantém também os arquivos -wal/-shm. -->
+    <exclude domain="database" path="signalmeter.db" />
+    <exclude domain="database" path="signalmeter.db-wal" />
+    <exclude domain="database" path="signalmeter.db-shm" />
 </full-backup-content>
